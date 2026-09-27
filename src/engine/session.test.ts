@@ -11,25 +11,23 @@ beforeEach(async () => {
 })
 
 describe('sessão', () => {
-  test('persiste estatísticas, desbloqueio e registro da sessão', async () => {
+  test('persiste estatísticas e o registro da sessão; toda a região disponível', async () => {
     const s = await StudySession.open(config, 'solta', false)
-    expect(s.active.map((i) => i.id)).toEqual(['E5', 'F5', 'G5'])
+    expect(s.active).toHaveLength(17)
 
-    let unlocked: string[] = []
-    for (let i = 0; i < 30; i++) {
+    const seen = new Set<string>()
+    for (let i = 0; i < 34; i++) {
       const item = s.next()
-      unlocked.push(...s.record(item.id, 'correct', 0.8).map((u) => u.id))
+      seen.add(item.id)
+      expect(s.record(item.id, 'correct', 0.8)).toEqual([])
     }
-    expect(unlocked[0]).toBe('B4')
+    // saco embaralhado: 34 notas = duas rodadas completas
+    expect(seen.size).toBe(17)
 
     const rec = await s.finish(true)
-    expect(rec?.attempts).toBe(30)
-    expect(rec?.correct).toBe(30)
+    expect(rec?.attempts).toBe(34)
+    expect(rec?.correct).toBe(34)
     expect(rec?.medianTime).toBeCloseTo(0.8)
-
-    const again = await StudySession.open(config, 'solta', false)
-    expect(again.active.map((i) => i.id)).toContain('B4')
-    expect(again.labelOpacity('E5')).toBe(0)
     expect(await db.sessions.count()).toBe(1)
     expect((await db.itemStats.get('buttons:E5'))?.correct).toBeGreaterThan(0)
   })

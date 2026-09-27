@@ -89,8 +89,6 @@ interface ScoreEvent {
   first: AttemptResult | null
   headSince: number | null
   revealUntil: number
-  /** rótulo normal (fora do erro) */
-  label?: { text: string; opacity: number }
 }
 
 /**
@@ -236,16 +234,8 @@ export class ScoreController extends Controller {
     if (e.pairStem) {
       draw = { figure: 'eighth', stem: e.pairStem, beamTo: e.beam === 'start' ? this.beatPx / 2 : undefined }
     }
-    // na repetição o nome (se houver) só na primeira nota do compasso
-    e.label = this.content.kind === 'repeat' && !e.barStart ? undefined : this.labelFor(item)
-    e.sn = stage.addNote(item.written, x, e.label, draw)
-  }
-
-  /** Nome sob a nota só no Violão, para notas recém-liberadas; na Pauta seria dar a resposta. */
-  private labelFor(item: StudyItem) {
-    if (this.d.config.input !== 'mic') return undefined
-    const opacity = this.d.session.labelOpacity(item.id)
-    return opacity > 0 ? { text: namePt(item.written), opacity } : undefined
+    // sem nome sob a nota: a leitura é o exercício (o nome só aparece no erro)
+    e.sn = stage.addNote(item.written, x, undefined, draw)
   }
 
   // ------------------------------------------------------------- ciclo
@@ -296,7 +286,7 @@ export class ScoreController extends Controller {
       e.bar?.setX(e.x - 0.3 * this.beatPx)
       if (e.revealUntil && now > e.revealUntil) {
         e.revealUntil = 0
-        e.sn?.setLabel(e.label?.text ?? '', e.label?.opacity ?? 0)
+        e.sn?.setLabel('', 0)
       }
       if (this.metro && !e.resolved && now > this.timeOf(e.beat) + this.tol + this.grace) this.miss(e, now)
     }

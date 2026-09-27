@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, unlockKey, type Settings } from '../db/db'
+import { db, type Settings } from '../db/db'
 import { scaleItems, unlockOrder, type StudyItem } from '../domain/scales'
-import { activeItems, isMastered, updateUnlocks, type InputKind, type ItemStats } from '../engine/adaptive'
+import { isMastered, type InputKind, type ItemStats } from '../engine/adaptive'
 
 export interface ProgressSnapshot {
   items: StudyItem[]
@@ -24,10 +24,8 @@ export function useProgressSnapshot(settings: Settings, input: InputKind): Progr
     const items = unlockOrder(scaleItems(scale, accidentals))
     const rows = await db.itemStats.where('input').equals(input).toArray()
     const stats = new Map(rows.map((r) => [r.noteId, r]))
-    const saved = (await db.unlocks.get(unlockKey(input, scale))) ?? { unlocked: [], retired: [] }
-    // mesmo cálculo do início de sessão, sem gravar
-    const state = updateUnlocks(items, saved, stats, input).state
-    const active = activeItems(items, state)
+    // desbloqueio desligado: toda a região está ativa
+    const active = items
     const mastered = new Set(active.filter((i) => isMastered(stats.get(i.id), input)).map((i) => i.id))
     return { items, active, stats, mastered }
   }, [accidentals, input])

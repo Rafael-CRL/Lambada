@@ -88,7 +88,7 @@ export function SettingsScreen({ settings }: { settings: Settings }) {
       </Group>
 
       <Group title="dados">
-        <Row label="apagar progresso" hint="Estatísticas, notas liberadas, histórico e recordes. As configurações ficam.">
+        <Row label="apagar progresso" hint="Estatísticas, histórico e recordes. As configurações ficam.">
           {confirmReset ? (
             <div className="flex gap-2">
               <Button onClick={() => setConfirmReset(false)}>cancelar</Button>

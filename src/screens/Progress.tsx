@@ -100,7 +100,7 @@ export function Progress({ settings }: { settings: Settings }) {
             {snap && (
               <>
                 {' '}
-                · {snap.active.length}/{snap.items.length} liberadas · {snap.mastered.size} dominadas
+                · {snap.mastered.size}/{snap.items.length} dominadas
               </>
             )}
           </p>
@@ -124,7 +124,7 @@ export function Progress({ settings }: { settings: Settings }) {
         <div className="overflow-x-auto rounded-xl bg-surface/60 px-3 py-2">
           {snap && <StaffSvg className="h-auto w-full" style={{ minWidth: `${staffNotes.length * 2.4 + 5}rem` }} spacing={36} ariaLabel="Acerto por nota na pauta" notes={staffNotes} />}
         </div>
-        <p className="text-xs text-sub">Acerto (%) nas últimas tentativas de cada nota. Passe o mouse para detalhes; notas apagadas ainda não foram liberadas.</p>
+        <p className="text-xs text-sub">Acerto (%) nas últimas tentativas de cada nota. Passe o mouse para detalhes.</p>
       </section>
 
       <section className="flex flex-col gap-3">

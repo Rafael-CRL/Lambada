@@ -64,6 +64,18 @@ export const ADAPTIVE = {
   },
 } as const
 
+/** Escolha da próxima nota (Leitura e Notas): saco embaralhado + reforço. */
+export const PICKER = {
+  /** tamanho do bloco da fila */
+  block: 10,
+  /** vagas de reforço (notas com erro recente) em cada bloco */
+  weightedPerBlock: 3,
+  /** quantas tentativas recentes de cada nota contam como "erro recente" */
+  errorWindow: 10,
+  /** máximo de reforços da mesma nota num bloco */
+  capPerBlock: 1,
+} as const
+
 export const READING = {
   /** Espaço entre notas na esteira, em espaços de pauta. */
   conveyorGap: 7,
