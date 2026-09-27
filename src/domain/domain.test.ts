@@ -223,17 +223,29 @@ describe('posição exibida para nota tocada', () => {
 
 describe('cola das notas', () => {
   test('naturais do Mi3 ao Mi6 escritos: todo o alcance do violão até a casa 12', async () => {
-    const { guitarRangeNaturals } = await import('../staff/NoteMap')
-    const ids = guitarRangeNaturals().map(noteId)
+    const { guitarRangeNaturals } = await import('./staff')
+    const ids = guitarRangeNaturals(12).map(noteId)
     expect(ids).toHaveLength(22)
     expect(ids[0]).toBe('E3')
     expect(ids.at(-1)).toBe('E6')
   })
 
   test('expandido: até o Si6 escrito (1ª corda, casa 19)', async () => {
-    const { guitarRangeNaturals } = await import('../staff/NoteMap')
+    const { guitarRangeNaturals } = await import('./staff')
     const ids = guitarRangeNaturals(19).map(noteId)
     expect(ids.at(-1)).toBe('B6')
     expect(ids).toHaveLength(26)
+  })
+})
+
+describe('região praticada', () => {
+  test('Solta e Fechada vão do Mi3 ao Sol5 escritos', async () => {
+    const { writtenRange } = await import('./scales')
+    for (const scale of ['solta', 'fechada'] as const) expect(writtenRange(scale).map(noteId)).toEqual(['E3', 'G5'])
+  })
+  test('rótulo de posição', async () => {
+    const { positionLabel } = await import('./fretboard')
+    expect(positionLabel({ string: 1, fret: 0 })).toBe('1ª solta')
+    expect(positionLabel({ string: 2, fret: 5 })).toBe('2ª c. 5')
   })
 })

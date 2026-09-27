@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { navigate } from '../app/router'
 import { ensureAudioRunning, isAudioRunning } from '../audio/clock'
 import { Microphone } from '../audio/microphone'
@@ -12,17 +12,14 @@ import { EMPTY_HUD, type Hud } from './controller'
 import { MicMeter } from './MicMeter'
 import { NoteButtons } from './NoteButtons'
 import { ScoreController } from './score'
-import { NoteMap } from '../staff/NoteMap'
+import { writtenRange } from '../domain/scales'
 import { staffStep } from '../domain/staff'
+import { NoteMap, type MapReach } from '../staff/NoteMap'
 import { StaffStage } from './stage'
 import { startActivity } from './start'
 import { activity, buildConfig, type ActivityId, type ExerciseConfig } from './types'
 
 type Phase = 'loading' | 'needs-gesture' | 'mic-error' | 'running' | 'paused'
-
-/** Região praticada (Solta, naturais): Mi3 a Sol5 escritos. */
-const REGION_MIN = staffStep({ letter: 'E', acc: 0, octave: 3 })
-const REGION_MAX = staffStep({ letter: 'G', acc: 0, octave: 5 })
 
 /** Abaixo disso, sair não mostra resumo (volta para a lista). */
 const MIN_FOR_SUMMARY = 10
@@ -64,6 +61,14 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
   const setHud = useCallback((patch: Partial<Hud>) => setHudState((h) => ({ ...h, ...patch })), [])
   const [dockOpen, setDockOpen] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
+  const [mapReach, setMapReach] = useState<MapReach>(12)
+  const toggleMap = useCallback(() => setMapOpen((v) => !v), [])
+  const scale = config?.scale ?? 'solta'
+  // região praticada, derivada da escala (para apagar o resto na cola)
+  const region = useMemo<[number, number]>(() => {
+    const [lo, hi] = writtenRange(scale)
+    return [staffStep(lo), staffStep(hi)]
+  }, [scale])
   const leaving = useRef(false)
 
   // ajustes salvos e microfone: uma vez por tela
@@ -266,13 +271,22 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
       </header>
       <ProgressBar value={hud.progress ?? 0} className={cx('mt-3', hud.progress === null && 'invisible')} />
 
-      <div className="relative flex min-h-0 flex-1 flex-col justify-center">
+      <div className="relative flex min-h-0 flex-1 flex-col justify-center-safe overflow-y-auto">
         {hud.toast && (
           <div className="absolute top-2 left-1/2 z-10 -translate-x-1/2 animate-fade-in rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink">
             {hud.toast}
           </div>
         )}
-        <svg ref={svgRef} className="h-[clamp(150px,36dvh,360px)] w-full shrink-0" aria-label="Pauta" role="img" />
+        <svg
+          ref={svgRef}
+          className={cx(
+            // 'staff' também aqui: o React reescreve a classe e não pode apagar a do palco
+            'staff w-full shrink-0 transition-[height] duration-200',
+            mapOpen || hud.fret ? 'h-[clamp(120px,26dvh,300px)]' : 'h-[clamp(150px,36dvh,360px)]',
+          )}
+          aria-label="Pauta"
+          role="img"
+        />
         {hud.countdown && (
           <div className="pointer-events-none absolute inset-0 grid place-items-center">
             <span key={hud.countdown} className="animate-pop font-mono text-7xl font-semibold text-accent/80">
@@ -300,7 +314,7 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
         </div>
         {mapOpen && (
           <div className="mt-2 animate-fade-in">
-            <NoteMap practiced={(n) => { const s = staffStep(n); return s >= REGION_MIN && s <= REGION_MAX }} />
+            <NoteMap region={region} reach={mapReach} onReach={setMapReach} />
           </div>
         )}
         {hud.fret && (
@@ -336,7 +350,7 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
               onChange={change}
               onOpenChange={setDockOpen}
               mapOpen={mapOpen}
-              onToggleMap={() => setMapOpen((v) => !v)}
+              onToggleMap={toggleMap}
             />
           </div>
         )}

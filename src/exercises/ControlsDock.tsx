@@ -178,10 +178,14 @@ export function ControlsDock({
               <button
                 key={c}
                 type="button"
-                aria-label={mapOpen ? 'Ocultar notas da pauta' : 'Mostrar notas da pauta'}
-                title={mapOpen ? 'Ocultar notas da pauta' : 'Mostrar notas de cada linha e espaço'}
+                aria-label="Notas da pauta"
+                title={mapOpen ? 'Ocultar as notas da pauta' : 'Mostrar as notas de cada linha e espaço'}
                 aria-pressed={mapOpen}
-                onClick={onToggleMap}
+                onClick={() => {
+                  // fecha qualquer balão aberto para não cobrir a cola
+                  setOpen(null)
+                  onToggleMap?.()
+                }}
                 className={cx(
                   'grid size-10 place-items-center rounded-lg transition-colors duration-150',
                   mapOpen ? 'bg-accent text-accent-ink' : 'text-sub hover:bg-surface hover:text-text',

@@ -159,6 +159,27 @@
 .note.is-rest {
   fill: var(--color-sub);
 }
+.note.is-selectable {
+  cursor: pointer;
+  outline: none;
+}
+.note .note-hit {
+  fill: transparent;
+  stroke: none;
+}
+.note.is-selectable:hover .note-hit,
+.note.is-selectable:focus-visible .note-hit {
+  fill: var(--color-surface-2);
+  fill-opacity: 0.7;
+}
+.note.is-selected {
+  fill: var(--color-accent);
+  stroke: var(--color-accent);
+  opacity: 1;
+}
+.note.is-selected .note-label {
+  fill: var(--color-accent);
+}
 .note.is-muted {
   opacity: 0.35;
 }

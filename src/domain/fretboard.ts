@@ -47,3 +47,8 @@ export function positionKey(p: Position): string {
 
 export const LOWEST_MIDI = STANDARD_TUNING[6]
 export const HIGHEST_MIDI = STANDARD_TUNING[1] + MAX_FRET
+
+/** Rótulo curto de uma posição: "1ª solta", "2ª c. 5". */
+export function positionLabel(p: Position): string {
+  return `${p.string}ª ${p.fret === 0 ? 'solta' : `c. ${p.fret}`}`
+}

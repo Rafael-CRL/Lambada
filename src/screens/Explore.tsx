@@ -4,7 +4,7 @@ import { ensureAudioRunning } from '../audio/clock'
 import { Microphone, micSupported } from '../audio/microphone'
 import { playNote } from '../audio/synth'
 import { loadSettings, saveActivityOptions } from '../db/db'
-import { midiAt, positionsOf, samePosition, type Position } from '../domain/fretboard'
+import { midiAt, positionLabel, positionsOf, samePosition, type Position } from '../domain/fretboard'
 import { namePt, namePtOctave, spellingsOf, writtenFromSounding, type Note } from '../domain/notes'
 import { displayPosition, type ScaleId } from '../domain/scales'
 import { MicMeter } from '../exercises/MicMeter'
@@ -122,7 +122,7 @@ export function Explore() {
         </div>
         {others.length > 0 && (
           <span className="text-xs text-sub">
-            mesma nota também em: {others.map((p) => `${p.string}ª ${p.fret === 0 ? 'solta' : `c. ${p.fret}`}`).join(' · ')}
+            mesma nota também em: {others.map(positionLabel).join(' · ')}
           </span>
         )}
       </div>

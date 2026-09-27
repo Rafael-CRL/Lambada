@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import type { Note } from '../domain/notes'
 import type { Figure } from '../domain/rhythm'
-import { clefShape, CLEF_END, LABEL_Y, NOTEHEAD_W, noteShapes, restShapes, STAFF_HEIGHT, staffLines, type NoteDraw, type Shape } from './geometry'
+import { staffStep } from '../domain/staff'
+import { clefShape, CLEF_END, LABEL_Y, NOTEHEAD_W, noteShapes, restShapes, S, STAFF_HEIGHT, staffLines, yOfStep, type NoteDraw, type Shape } from './geometry'
 
 export function ShapeView({ s }: { s: Shape }) {
   if (s.k === 'glyph')
@@ -25,6 +26,9 @@ export interface StaffNoteSpec {
   label?: string
   labelOpacity?: number
   title?: string
+  /** torna a nota selecionável (clique, toque ou teclado) */
+  onSelect?: () => void
+  selected?: boolean
 }
 
 /**
@@ -36,7 +40,6 @@ export function StaffSvg({
   spacing = 44,
   padRight = 24,
   minWidth = 0,
-  topPad = 0,
   className = '',
   style,
   children,
@@ -46,8 +49,6 @@ export function StaffSvg({
   spacing?: number
   padRight?: number
   minWidth?: number
-  /** espaço extra acima (notas além do Mi6, com muitas suplementares) */
-  topPad?: number
   className?: string
   style?: React.CSSProperties
   children?: ReactNode
@@ -55,12 +56,16 @@ export function StaffSvg({
 }) {
   const first = CLEF_END + 18
   const width = Math.max(minWidth, first + Math.max(0, notes.length - 1) * spacing + NOTEHEAD_W + padRight)
+  // notas acima do Mi6 (muitas suplementares) ganham espaço extra no topo
+  const highest = Math.min(...notes.filter((n) => !n.rest).map((n) => yOfStep(staffStep(n.note))), Infinity)
+  const topPad = Math.max(0, 1.5 * S - highest)
+  const interactive = notes.some((n) => n.onSelect)
   return (
     <svg
       viewBox={`0 ${-topPad} ${width} ${STAFF_HEIGHT + topPad}`}
       className={`staff ${className}`}
       style={style}
-      role="img"
+      role={interactive ? 'group' : 'img'}
       aria-label={ariaLabel}
       preserveAspectRatio="xMinYMid meet"
     >
@@ -73,11 +78,27 @@ export function StaffSvg({
       {notes.map((n, i) => (
         <g
           key={n.key}
-          className={`note ${n.className ?? ''}`}
+          className={`note ${n.className ?? ''} ${n.onSelect ? 'is-selectable' : ''} ${n.selected ? 'is-selected' : ''}`}
           style={n.style}
           transform={`translate(${first + i * spacing} 0)`}
+          {...(n.onSelect && {
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': n.title,
+            'aria-pressed': !!n.selected,
+            onClick: n.onSelect,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                e.stopPropagation()
+                n.onSelect!()
+              }
+            },
+          })}
         >
           {n.title && <title>{n.title}</title>}
+          {/* área de toque maior que a cabeça da nota */}
+          {n.onSelect && <rect x={-S} y={-S} width={NOTEHEAD_W + 2 * S} height={STAFF_HEIGHT} className="note-hit" />}
           {(n.rest ? restShapes(n.rest) : noteShapes(n.note, n.draw)).map((s, j) => (
             <ShapeView key={j} s={s} />
           ))}

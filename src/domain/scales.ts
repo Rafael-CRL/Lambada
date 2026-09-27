@@ -189,3 +189,9 @@ export function displayPosition(scale: ScaleId, midi: number, accidentals: boole
   if (!all.length) return null
   return all.reduce((best, p) => (Math.abs(p.fret - center) < Math.abs(best.fret - center) ? p : best))
 }
+
+/** Nota escrita mais grave e mais aguda da região (naturais). */
+export function writtenRange(scale: ScaleId): [Note, Note] {
+  const ns = naturalsOf(scale)
+  return [writtenFromSounding(defaultSpelling(ns[0].midi)), writtenFromSounding(defaultSpelling(ns[ns.length - 1].midi))]
+}

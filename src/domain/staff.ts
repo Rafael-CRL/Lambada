@@ -1,4 +1,5 @@
-import { diatonicIndex, parseNote, type Note } from './notes'
+import { STANDARD_TUNING } from './fretboard'
+import { defaultSpelling, diatonicIndex, LETTERS, parseNote, writtenFromSounding, type Note } from './notes'
 
 /**
  * Geometria abstrata da pauta em clave de sol. "Passo" = meio espaço;
@@ -34,4 +35,21 @@ export function stemUp(step: number): boolean {
 export function inStaffRange(n: Note): boolean {
   const s = staffStep(n)
   return s >= staffStep(WRITTEN_MIN) && s <= staffStep(WRITTEN_MAX)
+}
+
+/**
+ * Naturais escritas do Mi grave solto até a nota da 1ª corda na casa
+ * `maxFret`, calculadas pela afinação (casa 12 → Mi6, casa 19 → Si6).
+ */
+export function guitarRangeNaturals(maxFret: number): Note[] {
+  const low = writtenFromSounding(defaultSpelling(STANDARD_TUNING[6]))
+  const high = writtenFromSounding(defaultSpelling(STANDARD_TUNING[1] + maxFret))
+  const out: Note[] = []
+  for (let octave = low.octave; octave <= high.octave; octave++) {
+    for (const letter of LETTERS) {
+      const n: Note = { letter, acc: 0, octave }
+      if (staffStep(n) >= staffStep(low) && staffStep(n) <= staffStep(high)) out.push(n)
+    }
+  }
+  return out
 }
