@@ -1,5 +1,6 @@
 import { clock } from '../audio/clock'
-import type { Note } from '../domain/notes'
+import { namePt, type Note } from '../domain/notes'
+import { ledgerSteps, staffStep } from '../domain/staff'
 import {
   CLEF_END,
   clefShape,
@@ -11,6 +12,7 @@ import {
   staffLines,
   S,
   svgEl,
+  yOfStep,
   type NoteDraw,
   type Shape,
 } from '../staff/geometry'
@@ -33,7 +35,7 @@ export class StaffStage {
 
   constructor(
     readonly svg: SVGSVGElement,
-    readonly opts: { hitX?: number } = {},
+    readonly opts: { hitX?: number; fadeFrom?: number } = {},
   ) {
     svg.innerHTML = ''
     svg.classList.add('staff')
@@ -83,9 +85,10 @@ export class StaffStage {
     this.fade.setAttribute('x1', '0')
     this.fade.setAttribute('x2', String(w))
     this.fade.innerHTML = ''
+    const from = this.opts.fadeFrom ?? CLEF_END - 4
     const stops: [number, number][] = [
-      [CLEF_END - 4, 0],
-      [CLEF_END + 22, 1],
+      [from, 0],
+      [from + 26, 1],
       [w - 24, 1],
       [w, 0],
     ]
@@ -115,9 +118,66 @@ export class StaffStage {
     return n
   }
 
+  /** Cola fixa entre a clave e as notas (atrás delas). */
+  addGuide(notes: Note[], xs: { line: number; space: number }, extra: Note[] = []): StaffGuide {
+    const guide = new StaffGuide(notes, xs, extra)
+    this.bg.append(guide.g)
+    return guide
+  }
+
   dispose() {
     this.observer.disconnect()
     this.svg.innerHTML = ''
+  }
+}
+
+/**
+ * Cola das lições: o nome de cada linha e espaço usados, na altura certa.
+ * Linhas numa coluna e espaços noutra, para os nomes vizinhos não se
+ * encostarem. Cada nome tem opacidade própria: a cola some aos poucos, mas
+ * uma nota pode acender sozinha. As `extra` (revisão) só aparecem acesas.
+ */
+export class StaffGuide {
+  readonly g: SVGGElement
+  private items = new Map<number, SVGGElement>()
+  private extra = new Set<number>()
+
+  constructor(notes: Note[], xs: { line: number; space: number }, extra: Note[] = []) {
+    this.g = svgEl('g', { class: 'guide' })
+    for (const n of notes) this.add(n, xs)
+    for (const n of extra) if (this.add(n, xs)) this.extra.add(staffStep(n))
+    this.show(0, null)
+  }
+
+  private add(n: Note, xs: { line: number; space: number }): boolean {
+    const step = staffStep(n)
+    if (this.items.has(step)) return false
+    const onLine = step % 2 === 0
+    const x = onLine ? xs.line : xs.space
+    const item = svgEl('g', { class: 'guide-item' })
+    // nome numa suplementar: um pedaço da linha passando por ele
+    if (onLine && ledgerSteps(step).includes(step)) {
+      const y = yOfStep(step)
+      item.append(svgEl('line', { x1: x - 0.9 * S, x2: x + 0.9 * S, y1: y, y2: y, 'stroke-width': 0.16 * S, class: 'part-ledger' }))
+    }
+    const t = svgEl('text', { x, y: yOfStep(step), class: 'guide-label', 'text-anchor': 'middle', 'dominant-baseline': 'central' })
+    t.textContent = namePt(n)
+    item.append(t)
+    this.items.set(step, item)
+    this.g.append(item)
+    return true
+  }
+
+  /** `base` para todos os nomes; `on` (passo da nota) aceso por inteiro. */
+  show(base: number, on: number | null) {
+    for (const [step, item] of this.items) {
+      item.style.opacity = String(step === on ? 1 : this.extra.has(step) ? 0 : base)
+      item.classList.toggle('is-on', step === on)
+    }
+  }
+
+  remove() {
+    this.g.remove()
   }
 }
 

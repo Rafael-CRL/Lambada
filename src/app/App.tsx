@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { saveSettings } from '../db/db'
 import { ExerciseScreen } from '../exercises/ExerciseScreen'
+import { LessonScreen } from '../lessons/LessonScreen'
 import { Home } from '../screens/Home'
 import { Progress } from '../screens/Progress'
 import { SettingsScreen } from '../screens/Settings'
@@ -21,6 +22,7 @@ export function App() {
     if (route.activity === 'explore') return <Explore key={route.run} />
     return <ExerciseScreen key={`${route.run}`} activityId={route.activity} />
   }
+  if (route.name === 'lesson') return <LessonScreen key={`${route.lesson}-${route.run}`} lessonId={route.lesson} />
 
   return (
     <Shell route={route} theme={settings.theme}>

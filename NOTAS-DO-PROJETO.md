@@ -7,7 +7,7 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 - **Objetivo:** aprender a ler a pauta (clave de sol) e achar as notas no braço do violão enquanto lê.
 - **Home:** só dois botões, **Pauta** e **Violão**, e uma linha discreta "continuar".
 - **Cada tópico abre uma lista curta de atividades** (nome + uma frase). Clicar = começar.
-  - Pauta: **Leitura** (responde com botões ou teclado).
+  - Pauta: a **trilha** (Linhas, Espaços, Suplementares; 5 lições cada) e depois a **Leitura** (responde com botões ou teclado).
   - Violão: **Escala**, **Notas**, **Explorar** (o microfone confere). **Repetição** existe no código, mas está oculta (`hidden`).
 - **Nenhuma configuração antes de começar.** Os ajustes são ícones no canto inferior direito da atividade, e cada um abre um balão pequeno. Ficam salvos por atividade.
   - Mudam sem reiniciar: som, BPM, ♯♭.
@@ -15,6 +15,13 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 - **Um número só na tela** (acerto % ou pontos). O resto fica no resumo, que aparece ao sair com 10 ou mais notas feitas.
 - **Som dos botões:** piano por padrão (violão ou mudo como opção), sempre na altura real do violão.
 - **Cola das notas:** botão que mostra todas as linhas e espaços até a casa 12, com seta para expandir até a 19.
+
+- **Trilha da Pauta** (`src/lessons/`): aprender por tentativa e erro.
+  - Lições 1–4: apresenta as notas novas repetidas (nome + cola), padrão em ordem (cola fraca), sorteio sem ajuda. Um cartão entre as partes espera qualquer tecla.
+  - Lição 5 = **Desafio**: 20 notas sem ajuda; passa com 90% e até 2 s por nota. Passar no Desafio fecha a etapa (quem já sabe pula as lições). O cartão da etapa mostra o recorde de tempo.
+  - Semibreves sem compasso. Errou: mostra o nome e o lugar ("2ª linha"), espera um pouco e segue. No sorteio, a nota errada volta 3 notas depois, com a cola acesa só nela.
+  - O sorteio revisa as etapas anteriores (20%: linhas em Espaços, pauta em Suplementares). O Mi da 1ª linha e o Mi/Fá de cima são referência: ficam no padrão, fora do sorteio.
+  - Fim da lição: "próxima", "+ 10 notas" (treino extra na mesma tela), "de novo". Nada bloqueado. Progresso em `meta.trail`; parâmetros em `LESSON` (`src/config.ts`).
 
 ## Princípios (o usuário insistiu nisso)
 
@@ -68,3 +75,4 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 - Guia básico de teoria (figuras, tempo), ligado às atividades.
 - "Achar no braço": clicar a posição da nota da pauta num braço desenhado.
 - Outras escalas (maiores, menores, pentatônicas) e regiões maiores do braço.
+- Trilha: variação nos padrões (saltos, ex.: Mi→Si, Sol→Ré) para não depender da ordem.

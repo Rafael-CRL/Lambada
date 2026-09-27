@@ -271,99 +271,102 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
       </header>
       <ProgressBar value={hud.progress ?? 0} className={cx('mt-3', hud.progress === null && 'invisible')} />
 
-      <div className="relative flex min-h-0 flex-1 flex-col justify-center-safe overflow-y-auto">
-        {hud.toast && (
-          <div className="absolute top-2 left-1/2 z-10 -translate-x-1/2 animate-fade-in rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink">
-            {hud.toast}
-          </div>
-        )}
-        <svg
-          ref={svgRef}
-          className={cx(
-            // 'staff' também aqui: o React reescreve a classe e não pode apagar a do palco
-            'staff w-full shrink-0 transition-[height] duration-200',
-            mapOpen || hud.fret ? 'h-[clamp(120px,26dvh,300px)]' : 'h-[clamp(150px,36dvh,360px)]',
+      {/* tela grande: pauta e botões juntos no meio, perto do olho e do mouse; celular: botões no rodapé, perto do polegar */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto sm:justify-center-safe">
+        <div className="relative flex flex-col justify-center-safe max-sm:flex-1">
+          {hud.toast && (
+            <div className="absolute top-2 left-1/2 z-10 -translate-x-1/2 animate-fade-in rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-accent-ink">
+              {hud.toast}
+            </div>
           )}
-          aria-label="Pauta"
-          role="img"
-        />
-        {hud.countdown && (
-          <div className="pointer-events-none absolute inset-0 grid place-items-center">
-            <span key={hud.countdown} className="animate-pop font-mono text-7xl font-semibold text-accent/80">
-              {hud.countdown}
-            </span>
-          </div>
-        )}
-        <div className="flex min-h-16 flex-col items-center justify-start gap-0.5 text-center" aria-live="polite">
-          {fb && (fb.kind !== 'ok' || fb.text) && (
-            <div key={fb.key} className="animate-fade-in">
-              <div
-                className={cx(
-                  'text-2xl font-semibold',
-                  fb.kind === 'ok' && 'text-ok',
-                  fb.kind === 'err' && 'text-err',
-                  fb.kind === 'oct' && 'text-oct',
-                  fb.kind === 'info' && 'text-sub',
-                )}
-              >
-                {fb.text}
+          <svg
+            ref={svgRef}
+            className={cx(
+              // 'staff' também aqui: o React reescreve a classe e não pode apagar a do palco
+              'staff w-full shrink-0 transition-[height] duration-200',
+              mapOpen || hud.fret ? 'h-[clamp(120px,26dvh,300px)]' : 'h-[clamp(150px,36dvh,360px)]',
+            )}
+            aria-label="Pauta"
+            role="img"
+          />
+          {hud.countdown && (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center">
+              <span key={hud.countdown} className="animate-pop font-mono text-7xl font-semibold text-accent/80">
+                {hud.countdown}
+              </span>
+            </div>
+          )}
+          <div className="flex min-h-16 flex-col items-center justify-start gap-0.5 text-center" aria-live="polite">
+            {fb && (fb.kind !== 'ok' || fb.text) && (
+              <div key={fb.key} className="animate-fade-in">
+                <div
+                  className={cx(
+                    'text-2xl font-semibold',
+                    fb.kind === 'ok' && 'text-ok',
+                    fb.kind === 'err' && 'text-err',
+                    fb.kind === 'oct' && 'text-oct',
+                    fb.kind === 'info' && 'text-sub',
+                  )}
+                >
+                  {fb.text}
+                </div>
+                {fb.detail && <div className="text-sm text-sub">{fb.detail}</div>}
               </div>
-              {fb.detail && <div className="text-sm text-sub">{fb.detail}</div>}
+            )}
+          </div>
+          {mapOpen && (
+            <div className="mt-2 animate-fade-in">
+              <NoteMap region={region} reach={mapReach} onReach={setMapReach} />
+            </div>
+          )}
+          {hud.fret && (
+            <div className="mx-auto mt-2 w-full max-w-sm animate-fade-in">
+              <Fretboard
+                toFret={Math.max(5, hud.fret.target.fret, hud.fret.played?.fret ?? 0)}
+                ariaLabel={`Nota certa ${hud.fret.targetName}; tocada ${hud.fret.playedName ?? ''}`}
+                markers={[
+                  ...(hud.fret.played ? [{ position: hud.fret.played, kind: 'played' as const }] : []),
+                  { position: hud.fret.target, kind: 'target' as const },
+                ]}
+              />
+              <div className="mt-1 flex justify-center gap-4 text-xs text-sub">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-ok" /> {hud.fret.targetName}
+                </span>
+                {hud.fret.playedName && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="size-2.5 rounded-full bg-err" /> tocada {hud.fret.playedName}
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
-        {mapOpen && (
-          <div className="mt-2 animate-fade-in">
-            <NoteMap region={region} reach={mapReach} onReach={setMapReach} />
-          </div>
-        )}
-        {hud.fret && (
-          <div className="mx-auto mt-2 w-full max-w-sm animate-fade-in">
-            <Fretboard
-              toFret={Math.max(5, hud.fret.target.fret, hud.fret.played?.fret ?? 0)}
-              ariaLabel={`Nota certa ${hud.fret.targetName}; tocada ${hud.fret.playedName ?? ''}`}
-              markers={[
-                ...(hud.fret.played ? [{ position: hud.fret.played, kind: 'played' as const }] : []),
-                { position: hud.fret.target, kind: 'target' as const },
-              ]}
-            />
-            <div className="mt-1 flex justify-center gap-4 text-xs text-sub">
-              <span className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-ok" /> {hud.fret.targetName}
-              </span>
-              {hud.fret.playedName && (
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-err" /> tocada {hud.fret.playedName}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
-      <footer className="mt-2 flex flex-col gap-3">
-        {config && (
-          <div className="flex justify-end">
-            <ControlsDock
-              controls={def.controls}
-              config={config}
-              onChange={change}
-              onOpenChange={setDockOpen}
-              mapOpen={mapOpen}
-              onToggleMap={toggleMap}
+        <footer className="mt-2 flex flex-col gap-3">
+          {config && (
+            <div className="flex justify-end">
+              <ControlsDock
+                controls={def.controls}
+                config={config}
+                onChange={change}
+                onOpenChange={setDockOpen}
+                mapOpen={mapOpen}
+                onToggleMap={toggleMap}
+              />
+            </div>
+          )}
+          {input === 'buttons' ? (
+            <NoteButtons
+              accidentals={config?.accidentals ?? false}
+              disabled={phase !== 'running'}
+              onAnswer={(s, t) => ctrl.current?.answerButton(s, t) ?? null}
             />
-          </div>
-        )}
-        {input === 'buttons' ? (
-          <NoteButtons
-            accidentals={config?.accidentals ?? false}
-            disabled={phase !== 'running'}
-            onAnswer={(s, t) => ctrl.current?.answerButton(s, t) ?? null}
-          />
-        ) : (
-          mic && <MicMeter mic={mic} />
-        )}
-      </footer>
+          ) : (
+            mic && <MicMeter mic={mic} />
+          )}
+        </footer>
+      </div>
 
       {(phase === 'paused' || phase === 'needs-gesture' || phase === 'mic-error') && (
         <div className="fixed inset-0 z-20 grid animate-fade-in place-items-center bg-bg/85 p-6 backdrop-blur-sm">

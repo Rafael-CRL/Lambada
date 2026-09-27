@@ -1,10 +1,12 @@
 import { useSyncExternalStore } from 'react'
 import { isActivityId, type ActivityId, type Topic } from '../exercises/types'
+import { isLessonId, type LessonId } from '../lessons/lessons'
 
 export type Route =
   | { name: 'home' }
   | { name: 'topic'; topic: Topic }
   | { name: 'play'; activity: ActivityId; run: number }
+  | { name: 'lesson'; lesson: LessonId; run: number }
   | { name: 'summary'; id: number }
   | { name: 'progress' }
   | { name: 'settings' }
@@ -16,6 +18,8 @@ export function parseHash(hash: string): Route {
   switch (parts[0]) {
     case 'play':
       return isActivityId(parts[1]) ? { name: 'play', activity: parts[1], run } : { name: 'home' }
+    case 'licao':
+      return isLessonId(parts[1]) ? { name: 'lesson', lesson: parts[1], run } : { name: 'topic', topic: 'pauta' }
     case 'summary':
       return Number.isFinite(Number(parts[1])) ? { name: 'summary', id: Number(parts[1]) } : { name: 'home' }
     case 'progress':
@@ -36,6 +40,8 @@ export function routeHash(r: Route): string {
       return '#/'
     case 'play':
       return `#/play/${r.activity}${r.run ? `?run=${r.run}` : ''}`
+    case 'lesson':
+      return `#/licao/${r.lesson}${r.run ? `?run=${r.run}` : ''}`
     case 'summary':
       return `#/summary/${r.id}`
     case 'progress':

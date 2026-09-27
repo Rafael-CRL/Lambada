@@ -183,6 +183,9 @@
 .note.is-muted {
   opacity: 0.35;
 }
+.note.is-retry {
+  animation: fade-in 300ms ease-out;
+}
 .note.is-gone {
   opacity: 0;
 }
@@ -191,6 +194,26 @@
 }
 .note.is-ok .lift {
   transform: translateY(-6px);
+}
+/* cola das lições: nomes sobre as linhas, com um recorte da cor do fundo */
+.guide-item {
+  transition: opacity 400ms ease;
+}
+.guide-label {
+  font-family: var(--font-sans);
+  font-size: 8.5px;
+  font-weight: 600;
+  fill: var(--color-sub);
+  stroke: var(--color-bg);
+  stroke-width: 2.6px;
+  paint-order: stroke;
+  transition: fill 160ms ease;
+}
+.guide .part-ledger {
+  stroke: var(--color-line);
+}
+.guide-item.is-on .guide-label {
+  fill: var(--color-accent);
 }
 .hit-line {
   stroke: var(--color-accent);
@@ -236,7 +259,7 @@
   stroke-width: 2;
 }
 .fb-marker text {
-  font-size: 7.5px;
+  font-size: 8.5px;
   font-weight: 600;
   fill: var(--color-accent-ink);
 }

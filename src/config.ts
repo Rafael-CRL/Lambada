@@ -96,6 +96,31 @@ export const READING = {
   sprintAdvanceDelay: 0.12,
 } as const
 
+/** Lições da trilha da Pauta. */
+export const LESSON = {
+  /** vezes que cada nota nova aparece seguida, com o nome */
+  introRepeat: 3,
+  /** idem quando a lição apresenta 3 ou mais notas novas */
+  introRepeatMany: 2,
+  /** opacidade da cola na parte "em ordem" (1 na apresentação, 0 no sorteio) */
+  patternGuide: 0.4,
+  /** espaço entre as notas, em espaços de pauta */
+  gap: 7,
+  /** tempo mostrando a resposta certa depois de um erro (s) */
+  revealTime: 1.1,
+  /** a nota errada volta tantas notas depois (só no sorteio) */
+  retryAfter: 3,
+  /** acerto mínimo (notas sem o nome) para marcar a lição como feita */
+  pass: 0.9,
+  /** parte do sorteio que revisa as etapas anteriores */
+  review: 0.2,
+  /** Desafio da etapa: notas e tempo médio máximo por nota (s) */
+  challengeNotes: 20,
+  challengeTime: 2,
+  /** "treinar mais" no fim da lição */
+  moreNotes: 10,
+} as const
+
 export const BPM = {
   beatsPerBar: 4,
   countInBars: 1,

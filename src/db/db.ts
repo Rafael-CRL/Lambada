@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import type { InputKind, ItemStats, UnlockState } from '../engine/adaptive'
 import type { ScaleId } from '../domain/scales'
 import { isActivityId, type ActivityId, type ActivityOptions, type ExerciseConfig } from '../exercises/types'
+import type { LessonId } from '../lessons/lessons'
 
 export type Theme = 'dark' | 'light'
 
@@ -133,4 +134,35 @@ export async function setLastActivity(id: ActivityId): Promise<void> {
 export async function saveActivityOptions(id: ActivityId, patch: Partial<ActivityOptions>): Promise<void> {
   const current = await loadSettings()
   await saveSettings({ activities: { ...current.activities, [id]: { ...current.activities[id], ...patch } } })
+}
+
+/** Trilha da Pauta: melhor acerto de cada lição e se já passou do mínimo. */
+export interface LessonProgress {
+  best: number
+  done: boolean
+  at: number
+  /** Desafio: menor tempo médio por nota (s) */
+  bestTime?: number
+}
+
+export type TrailProgress = Partial<Record<LessonId, LessonProgress>>
+
+export async function loadTrail(): Promise<TrailProgress> {
+  const rec = await db.meta.get('trail')
+  return (rec?.value as TrailProgress | undefined) ?? {}
+}
+
+/** Guarda o resultado de uma lição (o melhor acerto e o melhor tempo ficam). */
+export async function saveLessonResult(id: LessonId, accuracy: number, passed: boolean, meanTime?: number): Promise<LessonProgress> {
+  const trail = await loadTrail()
+  const prev = trail[id]
+  const times = [prev?.bestTime, meanTime].filter((t): t is number => t !== undefined)
+  const next: LessonProgress = {
+    best: Math.max(prev?.best ?? 0, accuracy),
+    done: (prev?.done ?? false) || passed,
+    at: Date.now(),
+    bestTime: times.length ? Math.min(...times) : undefined,
+  }
+  await db.meta.put({ key: 'trail', value: { ...trail, [id]: next } })
+  return next
 }

@@ -9,13 +9,13 @@ const m = (id: string) => midiOf(parseNote(id))
 
 describe('som do botão', () => {
   test('acerto toca a nota da pauta no som real do violão (oitava abaixo)', () => {
-    expect(pressedSoundingMidi({ letter: 'G', acc: 0 }, item('G4'))).toBe(m('G3'))
-    expect(pressedSoundingMidi({ letter: 'E', acc: 0 }, item('E3'))).toBe(m('E2'))
+    expect(pressedSoundingMidi({ letter: 'G', acc: 0 }, parseNote('G4'))).toBe(m('G3'))
+    expect(pressedSoundingMidi({ letter: 'E', acc: 0 }, parseNote('E3'))).toBe(m('E2'))
   })
 
   test('erro toca a nota apertada perto da esperada', () => {
-    expect(pressedSoundingMidi({ letter: 'A', acc: 0 }, item('G4'))).toBe(m('A3'))
-    expect(pressedSoundingMidi({ letter: 'B', acc: 0 }, item('C5'))).toBe(m('B3'))
+    expect(pressedSoundingMidi({ letter: 'A', acc: 0 }, parseNote('G4'))).toBe(m('A3'))
+    expect(pressedSoundingMidi({ letter: 'B', acc: 0 }, parseNote('C5'))).toBe(m('B3'))
   })
 })
 

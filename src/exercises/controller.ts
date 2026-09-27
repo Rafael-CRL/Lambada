@@ -107,7 +107,7 @@ export abstract class Controller {
     const target = this.target()
     const result = this.answer({ kind: 'button', spelling, time: this.clock.now(perfTime) })
     const timbre = this.d.config.timbre
-    if (timbre !== 'off') playNote(pressedSoundingMidi(spelling, target), timbre)
+    if (timbre !== 'off') playNote(pressedSoundingMidi(spelling, target?.written ?? null), timbre)
     return result
   }
 
@@ -209,8 +209,8 @@ export function octaveHint(expectedWrittenMidi: number, playedWrittenMidi: numbe
  * MIDI soando do botão apertado: a grafia na oitava mais próxima da nota
  * esperada (acerto soa exatamente a nota da pauta).
  */
-export function pressedSoundingMidi(spelling: Spelling, target: StudyItem | null): number {
-  const ref = target ? midiOf(target.written) : 72
+export function pressedSoundingMidi(spelling: Spelling, target: Note | null): number {
+  const ref = target ? midiOf(target) : 72
   const base = midiOf({ ...spelling, octave: 4 })
   let best = base
   for (let o = -3; o <= 3; o++) {
