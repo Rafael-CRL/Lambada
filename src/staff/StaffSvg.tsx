@@ -36,6 +36,7 @@ export function StaffSvg({
   spacing = 44,
   padRight = 24,
   minWidth = 0,
+  topPad = 0,
   className = '',
   style,
   children,
@@ -45,6 +46,8 @@ export function StaffSvg({
   spacing?: number
   padRight?: number
   minWidth?: number
+  /** espaço extra acima (notas além do Mi6, com muitas suplementares) */
+  topPad?: number
   className?: string
   style?: React.CSSProperties
   children?: ReactNode
@@ -54,7 +57,7 @@ export function StaffSvg({
   const width = Math.max(minWidth, first + Math.max(0, notes.length - 1) * spacing + NOTEHEAD_W + padRight)
   return (
     <svg
-      viewBox={`0 0 ${width} ${STAFF_HEIGHT}`}
+      viewBox={`0 ${-topPad} ${width} ${STAFF_HEIGHT + topPad}`}
       className={`staff ${className}`}
       style={style}
       role="img"

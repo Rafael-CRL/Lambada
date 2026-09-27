@@ -110,3 +110,10 @@ export const IconArrowLeft = (p: P) => (
     <path d="M19 12H5M11 6l-6 6 6 6" />
   </Icon>
 )
+export const IconStaffMap = (p: P) => (
+  <Icon {...p}>
+    <path d="M3 6h18M3 10h18M3 14h18M3 18h18" strokeWidth={1.4} />
+    <circle cx="8" cy="14" r="1.8" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="8" r="1.8" fill="currentColor" stroke="none" />
+  </Icon>
+)

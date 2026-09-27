@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { RHYTHM_LEVELS } from '../domain/rhythm'
 import { SCALE_LABELS, type ScaleId } from '../domain/scales'
 import { cx, Segmented, Stepper } from '../ui/controls'
-import { IconFrets, IconHourglass, IconMetronome, IconSpeaker } from '../ui/icons'
+import { IconFrets, IconHourglass, IconMetronome, IconSpeaker, IconStaffMap } from '../ui/icons'
 import { TIMED_SECONDS, type Control, type Duration, type ExerciseConfig, type Tempo, type Timbre } from './types'
 
 export interface OptionChange {
@@ -24,11 +24,16 @@ export function ControlsDock({
   config,
   onChange,
   onOpenChange,
+  mapOpen = false,
+  onToggleMap,
 }: {
   controls: Control[]
   config: ExerciseConfig
   onChange: (c: OptionChange) => void
   onOpenChange?: (open: boolean) => void
+  /** cola das notas: liga/desliga direto, sem balão */
+  mapOpen?: boolean
+  onToggleMap?: () => void
 }) {
   const [open, setOpen] = useState<Control | null>(null)
   const ref = useRef<HTMLDivElement>(null)
@@ -168,6 +173,23 @@ export function ControlsDock({
             return button(c, 'Som', <IconSpeaker />)
           case 'accidentals':
             return button(c, 'Acidentes', <span className="font-serif text-base leading-none">♯♭</span>)
+          case 'map':
+            return (
+              <button
+                key={c}
+                type="button"
+                aria-label={mapOpen ? 'Ocultar notas da pauta' : 'Mostrar notas da pauta'}
+                title={mapOpen ? 'Ocultar notas da pauta' : 'Mostrar notas de cada linha e espaço'}
+                aria-pressed={mapOpen}
+                onClick={onToggleMap}
+                className={cx(
+                  'grid size-10 place-items-center rounded-lg transition-colors duration-150',
+                  mapOpen ? 'bg-accent text-accent-ink' : 'text-sub hover:bg-surface hover:text-text',
+                )}
+              >
+                <IconStaffMap />
+              </button>
+            )
           case 'region':
             return button(c, 'Região do braço', <IconFrets />)
         }

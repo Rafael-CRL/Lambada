@@ -12,11 +12,17 @@ import { EMPTY_HUD, type Hud } from './controller'
 import { MicMeter } from './MicMeter'
 import { NoteButtons } from './NoteButtons'
 import { ScoreController } from './score'
+import { NoteMap } from '../staff/NoteMap'
+import { staffStep } from '../domain/staff'
 import { StaffStage } from './stage'
 import { startActivity } from './start'
 import { activity, buildConfig, type ActivityId, type ExerciseConfig } from './types'
 
 type Phase = 'loading' | 'needs-gesture' | 'mic-error' | 'running' | 'paused'
+
+/** Região praticada (Solta, naturais): Mi3 a Sol5 escritos. */
+const REGION_MIN = staffStep({ letter: 'E', acc: 0, octave: 3 })
+const REGION_MAX = staffStep({ letter: 'G', acc: 0, octave: 5 })
 
 /** Abaixo disso, sair não mostra resumo (volta para a lista). */
 const MIN_FOR_SUMMARY = 10
@@ -57,6 +63,7 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
   const [hud, setHudState] = useState<Hud>(EMPTY_HUD)
   const setHud = useCallback((patch: Partial<Hud>) => setHudState((h) => ({ ...h, ...patch })), [])
   const [dockOpen, setDockOpen] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
   const leaving = useRef(false)
 
   // ajustes salvos e microfone: uma vez por tela
@@ -291,6 +298,11 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
             </div>
           )}
         </div>
+        {mapOpen && (
+          <div className="mt-2 animate-fade-in">
+            <NoteMap practiced={(n) => { const s = staffStep(n); return s >= REGION_MIN && s <= REGION_MAX }} />
+          </div>
+        )}
         {hud.fret && (
           <div className="mx-auto mt-2 w-full max-w-sm animate-fade-in">
             <Fretboard
@@ -318,7 +330,14 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
       <footer className="mt-2 flex flex-col gap-3">
         {config && (
           <div className="flex justify-end">
-            <ControlsDock controls={def.controls} config={config} onChange={change} onOpenChange={setDockOpen} />
+            <ControlsDock
+              controls={def.controls}
+              config={config}
+              onChange={change}
+              onOpenChange={setDockOpen}
+              mapOpen={mapOpen}
+              onToggleMap={() => setMapOpen((v) => !v)}
+            />
           </div>
         )}
         {input === 'buttons' ? (

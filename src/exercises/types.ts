@@ -19,7 +19,7 @@ export type Duration = 'infinite' | 'short' | 'long' | 'timed'
 export type Timbre = 'piano' | 'guitar' | 'off'
 
 /** Botões de ajuste que uma atividade mostra no canto. */
-export type Control = 'tempo' | 'bpm' | 'duration' | 'sound' | 'accidentals' | 'region'
+export type Control = 'tempo' | 'bpm' | 'duration' | 'sound' | 'accidentals' | 'region' | 'map'
 
 /** Ajustes guardados por atividade. */
 export interface ActivityOptions {
@@ -54,7 +54,7 @@ export const ACTIVITIES: ActivityDef[] = [
     hint: 'leia a nota e responda',
     input: 'buttons',
     content: 'random',
-    controls: ['tempo', 'duration', 'sound', 'accidentals'],
+    controls: ['map', 'tempo', 'duration', 'sound', 'accidentals'],
     defaults: BASE,
   },
   {
@@ -75,7 +75,7 @@ export const ACTIVITIES: ActivityDef[] = [
     hint: 'escala das notas naturais',
     input: 'mic',
     content: 'scale',
-    controls: ['tempo'],
+    controls: ['map', 'tempo'],
     defaults: BASE,
   },
   {
@@ -85,7 +85,7 @@ export const ACTIVITIES: ActivityDef[] = [
     hint: 'leia a nota na pauta e toque no violão',
     input: 'mic',
     content: 'random',
-    controls: ['tempo', 'duration', 'accidentals'],
+    controls: ['map', 'tempo', 'duration', 'accidentals'],
     defaults: BASE,
   },
   {

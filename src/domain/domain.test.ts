@@ -220,3 +220,20 @@ describe('posição exibida para nota tocada', () => {
     expect(displayPosition('solta', m('E5'), false)).toEqual({ string: 1, fret: 12 })
   })
 })
+
+describe('cola das notas', () => {
+  test('naturais do Mi3 ao Mi6 escritos: todo o alcance do violão até a casa 12', async () => {
+    const { guitarRangeNaturals } = await import('../staff/NoteMap')
+    const ids = guitarRangeNaturals().map(noteId)
+    expect(ids).toHaveLength(22)
+    expect(ids[0]).toBe('E3')
+    expect(ids.at(-1)).toBe('E6')
+  })
+
+  test('expandido: até o Si6 escrito (1ª corda, casa 19)', async () => {
+    const { guitarRangeNaturals } = await import('../staff/NoteMap')
+    const ids = guitarRangeNaturals(19).map(noteId)
+    expect(ids.at(-1)).toBe('B6')
+    expect(ids).toHaveLength(26)
+  })
+})
