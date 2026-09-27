@@ -3,7 +3,7 @@ import { STRING_NUMS, type Position } from '../domain/fretboard'
 export interface FretMarker {
   position: Position
   /** classe de cor: target (nota certa), played (nota tocada), heat */
-  kind: 'target' | 'played' | 'heat' | 'neutral'
+  kind: 'target' | 'played' | 'heat' | 'neutral' | 'pick' | 'same'
   label?: string
   /** para kind = heat */
   fill?: string
@@ -25,11 +25,14 @@ export function Fretboard({
   toFret = 5,
   className = '',
   ariaLabel,
+  onPick,
 }: {
   markers: FretMarker[]
   toFret?: number
   className?: string
   ariaLabel?: string
+  /** torna cada casa clicável */
+  onPick?: (p: Position) => void
 }) {
   const nutX = OPEN_W
   const width = nutX + toFret * FRET_W + 8
@@ -74,8 +77,25 @@ export function Fretboard({
             {f}
           </text>
         ))}
+      {onPick &&
+        STRING_NUMS.flatMap((s) =>
+          Array.from({ length: toFret + 1 }, (_, f) => (
+            <rect
+              key={`${s}:${f}`}
+              className="fb-cell"
+              x={f === 0 ? 0 : nutX + (f - 1) * FRET_W}
+              y={yOf(s) - STRING_GAP / 2}
+              width={f === 0 ? OPEN_W : FRET_W}
+              height={STRING_GAP}
+              onPointerDown={(e) => {
+                e.preventDefault()
+                onPick({ string: s, fret: f })
+              }}
+            />
+          )),
+        )}
       {markers.map((m, i) => (
-        <g key={i} className={`fb-marker fb-${m.kind}`} transform={`translate(${xOf(m.position.fret)} ${yOf(m.position.string)})`}>
+        <g key={i} className={`fb-marker fb-${m.kind}`} pointerEvents="none" transform={`translate(${xOf(m.position.fret)} ${yOf(m.position.string)})`}>
           {m.title && <title>{m.title}</title>}
           <circle r={m.kind === 'heat' ? 6.5 : 7.5} style={m.fill ? { fill: m.fill } : undefined} />
           {m.label && (

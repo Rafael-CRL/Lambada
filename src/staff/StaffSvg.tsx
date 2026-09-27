@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Note } from '../domain/notes'
-import { clefShape, CLEF_END, LABEL_Y, NOTEHEAD_W, noteShapes, STAFF_HEIGHT, staffLines, type Shape } from './geometry'
+import type { Figure } from '../domain/rhythm'
+import { clefShape, CLEF_END, LABEL_Y, NOTEHEAD_W, noteShapes, restShapes, STAFF_HEIGHT, staffLines, type NoteDraw, type Shape } from './geometry'
 
 export function ShapeView({ s }: { s: Shape }) {
   if (s.k === 'glyph')
@@ -15,6 +16,9 @@ export function ShapeView({ s }: { s: Shape }) {
 export interface StaffNoteSpec {
   note: Note
   key: string
+  draw?: NoteDraw
+  /** desenha uma pausa desta figura no lugar da nota */
+  rest?: Figure
   /** classe extra aplicada ao grupo (ex.: estado de acerto/erro, cor do heatmap) */
   className?: string
   style?: React.CSSProperties
@@ -71,7 +75,7 @@ export function StaffSvg({
           transform={`translate(${first + i * spacing} 0)`}
         >
           {n.title && <title>{n.title}</title>}
-          {noteShapes(n.note).map((s, j) => (
+          {(n.rest ? restShapes(n.rest) : noteShapes(n.note, n.draw)).map((s, j) => (
             <ShapeView key={j} s={s} />
           ))}
           {n.label && (
