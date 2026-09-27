@@ -1,185 +1,92 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { ReactNode } from 'react'
 import { navigate } from '../app/router'
-import { micSupported } from '../audio/microphone'
-import { db, getLastExercise, saveSettings, type Settings } from '../db/db'
-import { namePt, sameNote } from '../domain/notes'
-import { SCALE_LABELS } from '../domain/scales'
-import type { InputKind } from '../engine/adaptive'
-import { startExercise } from '../exercises/start'
-import { exerciseSubtitle, exerciseTitle, type ExerciseConfig } from '../exercises/types'
-import { StaffSvg } from '../staff/StaffSvg'
-import { Button, cx, Segmented } from '../ui/controls'
-import { IconArrowRight, IconKeys, IconMic, IconTrophy } from '../ui/icons'
-import { useProgressSnapshot } from './useProgress'
+import { getLastActivity } from '../db/db'
+import { startActivity } from '../exercises/start'
+import { activity, TOPIC_TITLE, type Topic } from '../exercises/types'
+import { IconArrowRight } from '../ui/icons'
 
-export function Home({ settings }: { settings: Settings }) {
-  const last = useLiveQuery(getLastExercise, [], null)
-  const input = settings.readingInput
-  const lastSession = useLiveQuery(() => db.sessions.orderBy('startedAt').filter((s) => s.completed !== false).last(), [])
-  const record = useLiveQuery(() => db.records.get(`${input}:${settings.bpm}`), [input, settings.bpm])
-  const snapshot = useProgressSnapshot(settings, input)
-  const mic = micSupported()
-
-  const go = (config: ExerciseConfig) => () => startExercise(config)
+/** Início: só os dois objetivos. As opções ficam dentro de cada um. */
+export function Home() {
+  const last = useLiveQuery(getLastActivity, [], null)
+  const resumable = last && !activity(last).hidden ? activity(last) : null
 
   return (
-    <div className="flex flex-col gap-8">
-      {last && (
+    <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-10">
+      <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+        <TopicTile topic="pauta" subtitle="ler as notas" art={<StaffArt />} />
+        <TopicTile topic="violao" subtitle="achar no braço" art={<FretArt />} />
+      </div>
+      {resumable && (
         <button
           type="button"
-          onClick={go(last)}
-          className="group flex w-full items-center justify-between gap-4 rounded-xl border border-accent/40 bg-accent/10 px-5 py-4 text-left transition-colors duration-150 hover:bg-accent/15"
+          onClick={() => startActivity(resumable.id)}
+          className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-sub hover:text-text"
         >
-          <span className="flex flex-col">
-            <span className="text-xs font-medium tracking-wide text-accent uppercase">continuar</span>
-            <span className="text-lg font-medium">
-              {exerciseTitle(last)} <span className="text-sub">· {exerciseSubtitle(last)}</span>
-            </span>
+          continuar{' '}
+          <span className="text-text">
+            {TOPIC_TITLE[resumable.topic]} · {resumable.title}
           </span>
-          <IconArrowRight className="text-2xl text-accent transition-transform duration-150 group-hover:translate-x-1" />
+          <IconArrowRight className="transition-transform duration-150 group-hover:translate-x-0.5" />
         </button>
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-sub">entrada</span>
-          <Segmented<InputKind>
-            label="Entrada para leitura e BPM"
-            value={input}
-            onChange={(v) => saveSettings({ readingInput: v })}
-            options={[
-              { value: 'buttons', label: <><IconKeys /> botões</> },
-              { value: 'mic', label: <><IconMic /> microfone</> },
-            ]}
-          />
-        </div>
-        <a href="#/settings" className="rounded-md text-sm text-sub hover:text-text">
-          escala <span className="text-text">{SCALE_LABELS[settings.scale]}</span> ·{' '}
-          {settings.accidentals ? 'com acidentes' : 'naturais'}
-        </a>
-      </div>
-
-      {input === 'mic' && !mic && (
-        <p className="rounded-lg bg-err/10 px-4 py-3 text-sm text-err">
-          Este navegador não dá acesso ao microfone aqui. Use http://localhost ou HTTPS.
-        </p>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <ModeCard title="Esteira" description="As notas vêm rolando até a linha. Leia e responda.">
-          <Button variant="primary" className="flex-1" onClick={go({ kind: 'conveyor', flow: 'wait', input })}>
-            Espera
-          </Button>
-          <Button variant="primary" className="flex-1" onClick={go({ kind: 'conveyor', flow: 'continuous', input })}>
-            Contínua
-          </Button>
-        </ModeCard>
-
-        <ModeCard title="Sprint" description="60 segundos, uma nota por vez. Quantas você acerta?">
-          <Button variant="primary" className="flex-1" onClick={go({ kind: 'sprint', input })}>
-            Começar
-          </Button>
-        </ModeCard>
-
-        <ModeCard
-          title="Pauta → violão"
-          badge={<><IconMic /> microfone</>}
-          description="Leia a nota e toque no violão. O app confere pelo som, oitava exata."
-        >
-          <Button variant="primary" className="flex-1 px-2" onClick={go({ kind: 'guitar', drill: 'repeat' })} disabled={!mic}>
-            Repetição
-          </Button>
-          <Button variant="primary" className="flex-1 px-2" onClick={go({ kind: 'guitar', drill: 'scale' })} disabled={!mic}>
-            Escala
-          </Button>
-          <Button variant="primary" className="flex-1 px-2" onClick={go({ kind: 'guitar', drill: 'adaptive' })} disabled={!mic}>
-            Adaptativo
-          </Button>
-        </ModeCard>
-
-        <ModeCard
-          title="BPM"
-          badge={
-            <span className="tabular font-mono">
-              {settings.bpm} bpm
-              {record && (
-                <span className="ml-2 text-accent">
-                  <IconTrophy className="inline align-[-2px]" /> {record.score}
-                </span>
-              )}
-            </span>
-          }
-          description="Semínimas no tempo do metrônomo. Nota certa e na hora certa."
-        >
-          <Button variant="primary" className="flex-1" onClick={go({ kind: 'bpm', input })}>
-            Começar
-          </Button>
-        </ModeCard>
-      </div>
-
-      {snapshot && (
-        <section className="flex flex-col gap-3 rounded-xl bg-surface/60 p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-sm font-medium text-sub">
-              notas liberadas · <span className="text-text">{snapshot.active.length}</span>
-              <span className="text-sub">/{snapshot.items.length}</span>
-              <span className="mx-2">·</span>
-              dominadas · <span className="text-text">{snapshot.mastered.size}</span>
-            </h2>
-            {lastSession && (
-              <span className="text-sm text-sub">
-                última sessão{' '}
-                <span className="tabular font-mono text-text">
-                  {Math.round((lastSession.correct / lastSession.attempts) * 100)}%
-                </span>
-              </span>
-            )}
-          </div>
-          <div className="overflow-x-auto">
-            <StaffSvg
-              className="h-24 min-w-full"
-              spacing={34}
-              ariaLabel="Notas liberadas"
-              notes={[...snapshot.active]
-                .sort((a, b) => a.midi - b.midi || b.written.acc - a.written.acc)
-                .filter((n, i, arr) => i === 0 || !sameNote(n.written, arr[i - 1].written))
-                .map((i) => ({
-                  key: i.id,
-                  note: i.written,
-                  className: cx(!snapshot.mastered.has(i.id) && 'is-muted'),
-                  title: `${namePt(i.written)} ${snapshot.mastered.has(i.id) ? '· dominada' : ''}`,
-                }))}
-            />
-          </div>
-          <a href="#/progress" onClick={(e) => (e.preventDefault(), navigate({ name: 'progress' }))} className="self-start rounded-md text-sm text-sub hover:text-text">
-            ver progresso →
-          </a>
-        </section>
       )}
     </div>
   )
 }
 
-function ModeCard({
-  title,
-  description,
-  badge,
-  children,
-}: {
-  title: string
-  description: string
-  badge?: ReactNode
-  children: ReactNode
-}) {
+function TopicTile({ topic, subtitle, art }: { topic: Topic; subtitle: string; art: ReactNode }) {
   return (
-    <section className="flex flex-col gap-4 rounded-xl bg-surface/60 p-5">
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        {badge && <span className="inline-flex items-center gap-1.5 text-xs text-sub">{badge}</span>}
-      </div>
-      <p className="-mt-2 text-sm leading-relaxed text-sub">{description}</p>
-      <div className="mt-auto flex gap-2">{children}</div>
-    </section>
+    <button
+      type="button"
+      onClick={() => navigate({ name: 'topic', topic })}
+      className="group flex aspect-[4/3] flex-col items-center justify-center gap-5 rounded-2xl bg-surface/60 p-6 transition-colors duration-150 hover:bg-surface"
+    >
+      <span className="w-2/3 text-sub transition-colors duration-150 group-hover:text-accent">{art}</span>
+      <span className="flex flex-col items-center gap-1">
+        <span className="text-3xl font-semibold tracking-tight">{TOPIC_TITLE[topic]}</span>
+        <span className="text-sm text-sub">{subtitle}</span>
+      </span>
+    </button>
+  )
+}
+
+function StaffArt() {
+  return (
+    <svg viewBox="0 0 120 56" className="w-full" aria-hidden="true">
+      <g stroke="currentColor" strokeWidth={1.2} opacity={0.5}>
+        {[10, 19, 28, 37, 46].map((y) => (
+          <line key={y} x1={0} x2={120} y1={y} y2={y} />
+        ))}
+      </g>
+      <g fill="currentColor">
+        <ellipse cx={34} cy={41.5} rx={5.6} ry={4} transform="rotate(-20 34 41.5)" />
+        <rect x={38.6} y={14} width={1.6} height={27} />
+        <ellipse cx={62} cy={28} rx={5.6} ry={4} transform="rotate(-20 62 28)" />
+        <rect x={66.6} y={2} width={1.6} height={26} />
+        <ellipse cx={90} cy={14.5} rx={5.6} ry={4} transform="rotate(-20 90 14.5)" />
+        <rect x={84.8} y={15} width={1.6} height={27} />
+      </g>
+    </svg>
+  )
+}
+
+function FretArt() {
+  return (
+    <svg viewBox="0 0 120 56" className="w-full" aria-hidden="true">
+      <g stroke="currentColor" opacity={0.5}>
+        {[6, 15, 24, 33, 42, 51].map((y, i) => (
+          <line key={y} x1={4} x2={120} y1={y} y2={y} strokeWidth={0.8 + i * 0.25} />
+        ))}
+        <line x1={6} x2={6} y1={5} y2={52} strokeWidth={3} />
+        {[34, 62, 90, 118].map((x) => (
+          <line key={x} x1={x} x2={x} y1={6} y2={51} strokeWidth={1.2} />
+        ))}
+      </g>
+      <g fill="currentColor">
+        <circle cx={48} cy={24} r={5} />
+        <circle cx={76} cy={42} r={5} />
+        <circle cx={20} cy={6} r={5} />
+      </g>
+    </svg>
   )
 }

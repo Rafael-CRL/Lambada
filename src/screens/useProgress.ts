@@ -10,17 +10,25 @@ export interface ProgressSnapshot {
   mastered: Set<string>
 }
 
-/** Estado de desbloqueio/domínio para entrada + escala atuais (somente leitura). */
+/** ♯♭ ligados na atividade principal do tópico (Leitura / Notas). */
+export function accidentalsFor(settings: Settings, input: InputKind): boolean {
+  return !!settings.activities[input === 'buttons' ? 'reading' : 'notes']?.accidentals
+}
+
+/** Estado de desbloqueio/domínio para entrada + região atuais (somente leitura). */
 export function useProgressSnapshot(settings: Settings, input: InputKind): ProgressSnapshot | undefined {
+  const accidentals = accidentalsFor(settings, input)
+  // região fixa enquanto não houver o ajuste (ver buildConfig)
+  const scale = 'solta' as const
   return useLiveQuery(async () => {
-    const items = unlockOrder(scaleItems(settings.scale, settings.accidentals))
+    const items = unlockOrder(scaleItems(scale, accidentals))
     const rows = await db.itemStats.where('input').equals(input).toArray()
     const stats = new Map(rows.map((r) => [r.noteId, r]))
-    const saved = (await db.unlocks.get(unlockKey(input, settings.scale))) ?? { unlocked: [], retired: [] }
+    const saved = (await db.unlocks.get(unlockKey(input, scale))) ?? { unlocked: [], retired: [] }
     // mesmo cálculo do início de sessão, sem gravar
     const state = updateUnlocks(items, saved, stats, input).state
     const active = activeItems(items, state)
     const mastered = new Set(active.filter((i) => isMastered(stats.get(i.id), input)).map((i) => i.id))
     return { items, active, stats, mastered }
-  }, [settings.scale, settings.accidentals, input])
+  }, [accidentals, input])
 }

@@ -1,43 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { navigate } from '../app/router'
 import { ensureAudioRunning, isAudioRunning } from '../audio/clock'
 import { Microphone } from '../audio/microphone'
-import { db, DEFAULT_SETTINGS, loadSettings, type SessionRecord, type Settings } from '../db/db'
+import { db, loadSettings, recordId, saveActivityOptions, saveSettings, type SessionRecord, type Settings } from '../db/db'
 import { StudySession } from '../engine/session'
 import { Fretboard } from '../staff/Fretboard'
-import { Button, cx, Kbd, ProgressBar } from '../ui/controls'
+import { Button, cx, ProgressBar } from '../ui/controls'
 import { IconPause, IconPlay, IconRedo, IconX } from '../ui/icons'
-import { BpmController } from './bpm'
-import { EMPTY_HUD, type Controller, type ControllerDeps, type Hud } from './controller'
-import { ConveyorController } from './conveyor'
-import { GuitarController } from './guitar'
+import { ControlsDock, type OptionChange } from './ControlsDock'
+import { EMPTY_HUD, type Hud } from './controller'
 import { MicMeter } from './MicMeter'
 import { NoteButtons } from './NoteButtons'
-import { SprintController } from './sprint'
+import { ScoreController } from './score'
 import { StaffStage } from './stage'
-import { startExercise } from './start'
-import { exerciseSubtitle, exerciseTitle, inputOf, type ExerciseConfig } from './types'
+import { startActivity } from './start'
+import { activity, buildConfig, type ActivityId, type ExerciseConfig } from './types'
 
 type Phase = 'loading' | 'needs-gesture' | 'mic-error' | 'running' | 'paused'
 
-function createController(deps: ControllerDeps): Controller {
-  const c = deps.config
-  switch (c.kind) {
-    case 'conveyor':
-      return new ConveyorController(deps, c.flow)
-    case 'sprint':
-      return new SprintController(deps)
-    case 'guitar':
-      return new GuitarController(deps, c.drill)
-    case 'bpm':
-      return new BpmController(deps)
-  }
-}
+/** Abaixo disso, sair não mostra resumo (volta para a lista). */
+const MIN_FOR_SUMMARY = 10
 
 async function saveResult(session: StudySession, completed: boolean, extra?: Partial<SessionRecord>): Promise<SessionRecord | null> {
   const rec = await session.finish(completed, extra)
-  if (rec && completed && rec.score !== undefined && rec.bpm !== undefined) {
-    const id = `${rec.input}:${rec.bpm}`
+  if (rec && rec.score !== undefined && rec.bpm !== undefined) {
+    const id = recordId(rec.input, rec.bpm, rec.rhythmLevel)
     const prev = await db.records.get(id)
     if (!prev || rec.score > prev.score) {
       await db.records.put({ id, input: rec.input, bpm: rec.bpm, score: rec.score, at: rec.endedAt })
@@ -46,62 +33,90 @@ async function saveResult(session: StudySession, completed: boolean, extra?: Par
   return rec
 }
 
-export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig }) {
-  // a rota recria o objeto a cada render; estabiliza pelo conteúdo
-  const configKey = JSON.stringify(configProp)
-  const config = useMemo(() => configProp, [configKey])
-  const input = inputOf(config)
+/** Ajustes que mudam a partitura: reiniciam a sessão. Os demais valem na hora. */
+const RESTARTS: (keyof OptionChange)[] = ['tempo', 'level', 'duration', 'scale']
+
+function pickOptions(c: ExerciseConfig) {
+  return { tempo: c.tempo, bpm: c.bpm, level: c.level, duration: c.duration, timbre: c.timbre, accidentals: c.accidentals }
+}
+
+export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
+  const def = activity(activityId)
+  const input = def.input
   const svgRef = useRef<SVGSVGElement>(null)
-  const ctrl = useRef<Controller | null>(null)
+  const ctrl = useRef<ScoreController | null>(null)
   const sessionRef = useRef<StudySession | null>(null)
+  /** objeto vivo lido pelo controlador (som, BPM e ♯♭ mudam sem reiniciar) */
+  const configRef = useRef<ExerciseConfig | null>(null)
+  const [config, setConfig] = useState<ExerciseConfig | null>(null)
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [generation, setGeneration] = useState(0)
   const [phase, setPhase] = useState<Phase>('loading')
   const [mic, setMic] = useState<Microphone | null>(null)
   const [micError, setMicError] = useState('')
   const [hud, setHudState] = useState<Hud>(EMPTY_HUD)
   const setHud = useCallback((patch: Partial<Hud>) => setHudState((h) => ({ ...h, ...patch })), [])
-  // configurações lidas (e congeladas) no início do exercício
-  const [frozen, setFrozen] = useState<Settings>(DEFAULT_SETTINGS)
+  const [dockOpen, setDockOpen] = useState(false)
+  const leaving = useRef(false)
 
+  // ajustes salvos e microfone: uma vez por tela
   useEffect(() => {
     let cancelled = false
-    let openedMic: Microphone | null = null
+    let opened: Microphone | null = null
+    void (async () => {
+      const s = await loadSettings()
+      if (cancelled) return
+      const c = buildConfig(activityId, s.activities[activityId], s.scale)
+      configRef.current = c
+      setConfig(c)
+      setSettings(s)
+      if (input !== 'mic') return
+      try {
+        opened = await Microphone.open(s.audioDeviceId, s.latencyMs)
+      } catch (e) {
+        if (cancelled) return
+        setMicError(e instanceof Error ? `${e.name}: ${e.message}` : String(e))
+        setPhase('mic-error')
+        return
+      }
+      if (cancelled) return opened.close()
+      setMic(opened)
+    })()
+    return () => {
+      cancelled = true
+      opened?.close()
+    }
+  }, [activityId, input])
+
+  // uma sessão por geração: ajustes que mudam a partitura criam outra
+  const ready = settings !== null && (input !== 'mic' || mic !== null)
+  useEffect(() => {
+    if (!ready || !configRef.current || !settings) return
+    let cancelled = false
     let stage: StaffStage | null = null
-    let controller: Controller | null = null
+    let controller: ScoreController | null = null
     let session: StudySession | null = null
     let done = false
+    setHudState(EMPTY_HUD)
 
-    const boot = async () => {
-      const frozen = await loadSettings()
-      if (cancelled) return
-      setFrozen(frozen)
-      session = await StudySession.open(config, frozen.scale, frozen.accidentals)
+    void (async () => {
+      const c = configRef.current!
+      session = await StudySession.open(c, c.scale, c.accidentals)
       if (cancelled) return
       sessionRef.current = session
-      if (input === 'mic') {
-        try {
-          openedMic = await Microphone.open(frozen.audioDeviceId, frozen.latencyMs)
-        } catch (e) {
-          if (cancelled) return
-          setMicError(e instanceof Error ? `${e.name}: ${e.message}` : String(e))
-          setPhase('mic-error')
-          return
-        }
-        if (cancelled) return openedMic.close()
-        setMic(openedMic)
-      }
-      stage = new StaffStage(svgRef.current!, { hitX: config.kind === 'sprint' ? undefined : 90 })
-      controller = createController({
-        config,
-        settings: frozen,
+      stage = new StaffStage(svgRef.current!, { hitX: 90 })
+      controller = new ScoreController({
+        config: c,
+        settings,
         session,
-        mic: openedMic,
+        mic,
         stage,
         setHud,
         finish: (extra) => {
           done = true
           void saveResult(session!, true, extra).then((rec) => {
             if (rec?.id !== undefined) navigate({ name: 'summary', id: rec.id }, true)
-            else navigate({ name: 'home' }, true)
+            else navigate({ name: 'topic', topic: def.topic }, true)
           })
         },
       })
@@ -111,20 +126,38 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
         if (cancelled) return
         controller.start()
         setPhase('running')
-      } else setPhase('needs-gesture')
-    }
-    void boot()
+      } else if (!cancelled) setPhase('needs-gesture')
+    })()
 
     return () => {
       cancelled = true
       controller?.dispose()
       stage?.dispose()
-      openedMic?.close()
       ctrl.current = null
-      // saída no meio: guarda o que já foi feito
-      if (session && !done) void saveResult(session, false)
+      // reinício (ou saída por outro caminho): guarda o que foi feito
+      if (session && !done && !leaving.current) void saveResult(session, false)
     }
-  }, [config, input, setHud])
+  }, [ready, generation, settings, mic, setHud, def.topic])
+
+  const change = (c: OptionChange) => {
+    const cur = configRef.current
+    if (!cur) return
+    const { scale, ...opts } = c
+    if (scale) void saveSettings({ scale })
+    if (Object.keys(opts).length) void saveActivityOptions(activityId, opts)
+    const next = buildConfig(activityId, { ...pickOptions(cur), ...opts }, scale ?? cur.scale)
+    if (RESTARTS.some((k) => c[k] !== undefined)) {
+      configRef.current = next
+      setConfig(next)
+      setGeneration((g) => g + 1)
+      return
+    }
+    // valem na hora, no mesmo objeto que o controlador lê
+    Object.assign(cur, { timbre: next.timbre, bpm: next.bpm, accidentals: next.accidentals })
+    if (c.bpm !== undefined) ctrl.current?.setBpm(next.bpm)
+    if (c.accidentals !== undefined) sessionRef.current?.setAccidentals(next.accidentals)
+    setConfig({ ...cur })
+  }
 
   const togglePause = useCallback(() => {
     const c = ctrl.current
@@ -145,18 +178,34 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
     }
   }
 
-  const exit = () => navigate({ name: 'home' }, true)
-  const restart = () => startExercise(config, true)
+  /** Sair: com bastante coisa feita, mostra o resumo; senão volta para a lista. */
+  const leave = async () => {
+    if (leaving.current) return
+    leaving.current = true
+    const c = ctrl.current
+    const session = sessionRef.current
+    const answered = c?.answered ?? 0
+    c?.dispose()
+    const rec = session ? await saveResult(session, configRef.current?.duration === 'infinite') : null
+    if (rec?.id !== undefined && answered >= MIN_FOR_SUMMARY) navigate({ name: 'summary', id: rec.id }, true)
+    else navigate({ name: 'topic', topic: def.topic }, true)
+  }
+
+  const restart = () => startActivity(activityId, true)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (dockOpen) return
       if (e.key === 'Escape') {
         e.preventDefault()
-        if (phase === 'paused') exit()
+        if (phase === 'paused') void leave()
         else togglePause()
       } else if (e.key === ' ' && (phase === 'paused' || phase === 'running') && !(e.target instanceof HTMLButtonElement)) {
         e.preventDefault()
         togglePause()
+      } else if (e.key === 'r' && input === 'mic' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        restart()
       } else if (e.key === 'Enter' && phase === 'needs-gesture') {
         void beginAfterGesture()
       }
@@ -166,15 +215,28 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
   })
 
   const fb = hud.feedback
+  const stat = hud.stats[0]
   return (
     <div className="mx-auto flex h-dvh w-full max-w-5xl flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
       <header className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-medium">
-            {exerciseTitle(config)} <span className="text-sub">· {exerciseSubtitle(config)}</span>
-          </h1>
-        </div>
-        <span className="tabular font-mono text-sm text-sub">{hud.progressText}</span>
+        <span className="flex-1 truncate text-sm text-sub">{def.title}</span>
+        {stat && (
+          <span className="tabular font-mono text-sm text-sub" title={stat.label}>
+            <span className="text-text">{stat.value}</span>
+            {stat.label === 'pontos' && ' pts'}
+            {stat.label === 'acertos' && ' ✓'}
+          </span>
+        )}
+        {hud.progressText && <span className="tabular font-mono text-sm text-sub">{hud.progressText}</span>}
+        <button
+          type="button"
+          onClick={restart}
+          aria-label="Reiniciar"
+          title={input === "mic" ? "Reiniciar (r)" : "Reiniciar"}
+          className="grid size-10 place-items-center rounded-lg text-lg text-sub hover:bg-surface hover:text-text"
+        >
+          <IconRedo />
+        </button>
         <button
           type="button"
           onClick={togglePause}
@@ -187,23 +249,15 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
         </button>
         <button
           type="button"
-          onClick={exit}
+          onClick={() => void leave()}
           aria-label="Sair"
-          title="Sair"
+          title="Sair (esc)"
           className="grid size-10 place-items-center rounded-lg text-lg text-sub hover:bg-surface hover:text-text"
         >
           <IconX />
         </button>
       </header>
-      <ProgressBar value={hud.progress} className="mt-3" />
-
-      <div className="mt-4 flex min-h-6 flex-wrap justify-center gap-x-6 gap-y-1 text-sm text-sub">
-        {hud.stats.map((s) => (
-          <span key={s.label}>
-            {s.label} <span className="tabular font-mono text-text">{s.value}</span>
-          </span>
-        ))}
-      </div>
+      <ProgressBar value={hud.progress ?? 0} className={cx('mt-3', hud.progress === null && 'invisible')} />
 
       <div className="relative flex min-h-0 flex-1 flex-col justify-center">
         {hud.toast && (
@@ -220,11 +274,12 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
           </div>
         )}
         <div className="flex min-h-16 flex-col items-center justify-start gap-0.5 text-center" aria-live="polite">
-          {fb && fb.kind !== 'ok' && (
+          {fb && (fb.kind !== 'ok' || fb.text) && (
             <div key={fb.key} className="animate-fade-in">
               <div
                 className={cx(
                   'text-2xl font-semibold',
+                  fb.kind === 'ok' && 'text-ok',
                   fb.kind === 'err' && 'text-err',
                   fb.kind === 'oct' && 'text-oct',
                   fb.kind === 'info' && 'text-sub',
@@ -235,23 +290,7 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
               {fb.detail && <div className="text-sm text-sub">{fb.detail}</div>}
             </div>
           )}
-          {fb && fb.kind === 'ok' && fb.text && (
-            <div key={fb.key} className="animate-fade-in">
-              <div className="text-2xl font-semibold text-ok">{fb.text}</div>
-              {fb.detail && <div className="text-sm text-sub">{fb.detail}</div>}
-            </div>
-          )}
         </div>
-        {hud.reps && (
-          <div className="flex justify-center gap-2" aria-label={`${hud.reps.done} de ${hud.reps.total} toques`}>
-            {Array.from({ length: hud.reps.total }, (_, i) => (
-              <span
-                key={i}
-                className={cx('size-2.5 rounded-full transition-colors duration-150', i < hud.reps!.done ? 'bg-ok' : 'bg-surface-2')}
-              />
-            ))}
-          </div>
-        )}
         {hud.fret && (
           <div className="mx-auto mt-2 w-full max-w-sm animate-fade-in">
             <Fretboard
@@ -276,24 +315,25 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
         )}
       </div>
 
-      <footer className="mt-4 flex flex-col items-center gap-3">
+      <footer className="mt-2 flex flex-col gap-3">
+        {config && (
+          <div className="flex justify-end">
+            <ControlsDock controls={def.controls} config={config} onChange={change} onOpenChange={setDockOpen} />
+          </div>
+        )}
         {input === 'buttons' ? (
           <NoteButtons
-            accidentals={frozen.accidentals}
+            accidentals={config?.accidentals ?? false}
             disabled={phase !== 'running'}
             onAnswer={(s, t) => ctrl.current?.answerButton(s, t) ?? null}
           />
         ) : (
           mic && <MicMeter mic={mic} />
         )}
-        <div className="hidden items-center gap-3 text-xs text-sub sm:flex">
-          <span className="flex items-center gap-1.5"><Kbd>espaço</Kbd> pausar</span>
-          <span className="flex items-center gap-1.5"><Kbd>esc</Kbd> sair</span>
-        </div>
       </footer>
 
       {(phase === 'paused' || phase === 'needs-gesture' || phase === 'mic-error') && (
-        <div className="fixed inset-0 z-20 grid place-items-center bg-bg/85 p-6 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-20 grid animate-fade-in place-items-center bg-bg/85 p-6 backdrop-blur-sm">
           <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
             {phase === 'paused' && (
               <>
@@ -305,7 +345,7 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
                   <Button className="flex-1" onClick={restart}>
                     <IconRedo /> reiniciar
                   </Button>
-                  <Button className="flex-1" onClick={exit}>
+                  <Button className="flex-1" onClick={() => void leave()}>
                     <IconX /> sair
                   </Button>
                 </div>
@@ -324,8 +364,7 @@ export function ExerciseScreen({ config: configProp }: { config: ExerciseConfig 
               <>
                 <h2 className="text-2xl font-semibold">sem microfone</h2>
                 <p className="text-sm text-sub">
-                  Não foi possível abrir o microfone. Verifique a permissão do navegador e o dispositivo escolhido nas
-                  configurações.
+                  Não foi possível abrir o microfone. Verifique a permissão do navegador e o dispositivo escolhido nas configurações.
                 </p>
                 <p className="w-full rounded-md bg-surface px-3 py-2 text-left font-mono text-xs break-words text-sub">{micError}</p>
                 <div className="flex w-full gap-2">

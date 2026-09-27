@@ -4,14 +4,14 @@ import { navigate } from '../app/router'
 import { db, type Settings } from '../db/db'
 import { positionKey } from '../domain/fretboard'
 import { namePt, namePtOctave } from '../domain/notes'
-import { SCALE_LABELS, type StudyItem } from '../domain/scales'
+import type { StudyItem } from '../domain/scales'
 import { summarize, type InputKind, type ItemStats } from '../engine/adaptive'
-import { exerciseTitle, INPUT_LABEL } from '../exercises/types'
+import { exerciseTitle } from '../exercises/types'
 import { Fretboard, type FretMarker } from '../staff/Fretboard'
 import { StaffSvg } from '../staff/StaffSvg'
 import { cx, Segmented } from '../ui/controls'
 import { IconKeys, IconMic } from '../ui/icons'
-import { useProgressSnapshot } from './useProgress'
+import { accidentalsFor, useProgressSnapshot } from './useProgress'
 
 /** Ponto neutro da escala divergente: abaixo é fraco, acima é bom. */
 const MID = 0.75
@@ -50,7 +50,7 @@ function heatTitle(label: string, h: Heat, locked: boolean): string {
 }
 
 export function Progress({ settings }: { settings: Settings }) {
-  const [input, setInput] = useState<InputKind>(settings.readingInput)
+  const [input, setInput] = useState<InputKind>('buttons')
   const snap = useProgressSnapshot(settings, input)
   const sessions = useLiveQuery(() => db.sessions.orderBy('startedAt').reverse().limit(40).toArray(), [])
 
@@ -96,7 +96,7 @@ export function Progress({ settings }: { settings: Settings }) {
         <div>
           <h1 className="text-2xl font-semibold">progresso</h1>
           <p className="text-sm text-sub">
-            escala {SCALE_LABELS[settings.scale]} · {settings.accidentals ? 'com acidentes' : 'naturais'}
+            {accidentalsFor(settings, input) ? 'com acidentes' : 'naturais'}
             {snap && (
               <>
                 {' '}
@@ -106,12 +106,12 @@ export function Progress({ settings }: { settings: Settings }) {
           </p>
         </div>
         <Segmented<InputKind>
-          label="Estatísticas da entrada"
+          label="Estatísticas do tópico"
           value={input}
           onChange={setInput}
           options={[
-            { value: 'buttons', label: <><IconKeys /> botões</> },
-            { value: 'mic', label: <><IconMic /> microfone</> },
+            { value: 'buttons', label: <><IconKeys /> Pauta</> },
+            { value: 'mic', label: <><IconMic /> Violão</> },
           ]}
         />
       </div>
@@ -161,13 +161,13 @@ export function Progress({ settings }: { settings: Settings }) {
                       {new Date(s.startedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="py-2.5 pr-4">
-                      {exerciseTitle(s.config)} <span className="text-sub">· {INPUT_LABEL[s.input]}</span>
-                      {s.score !== undefined && <span className="text-sub"> · {s.bpm} bpm · {s.score} pts</span>}
+                      {exerciseTitle(s.config)}
+                      {s.score !== undefined && <span className="text-sub"> · nível {s.rhythmLevel ?? 1} · {s.bpm} bpm · {s.score} pts</span>}
                       {s.completed === false && <span className="text-sub"> · interrompida</span>}
                     </td>
                     <td className="tabular py-2.5 pr-4 text-right font-mono">{Math.round((s.correct / s.attempts) * 100)}%</td>
                     <td className="tabular py-2.5 pr-4 text-right font-mono text-sub">
-                      {Number.isFinite(s.medianTime) && s.config.kind !== 'bpm' ? `${s.medianTime.toFixed(2)} s` : '—'}
+                      {Number.isFinite(s.medianTime) && s.score === undefined ? `${s.medianTime.toFixed(2)} s` : '—'}
                     </td>
                     <td className="tabular py-2.5 text-right font-mono text-sub">{s.attempts}</td>
                   </tr>

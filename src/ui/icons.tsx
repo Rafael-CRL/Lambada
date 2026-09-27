@@ -85,3 +85,28 @@ export const IconTrophy = (p: P) => (
     <path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1.5A3.5 3.5 0 0 0 7.5 11M17 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5M12 14v4M8 21h8M9.5 18h5" />
   </Icon>
 )
+export const IconMetronome = (p: P) => (
+  <Icon {...p}>
+    <path d="M9.5 3h5l4 18h-13zM12 16l5-9M7 16.5h10" />
+  </Icon>
+)
+export const IconHourglass = (p: P) => (
+  <Icon {...p}>
+    <path d="M6 3h12M6 21h12M7 3c0 5 10 6 10 9s-10 4-10 9M17 3c0 5-10 6-10 9s10 4 10 9" />
+  </Icon>
+)
+export const IconSpeaker = (p: P) => (
+  <Icon {...p}>
+    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+  </Icon>
+)
+export const IconFrets = (p: P) => (
+  <Icon {...p}>
+    <path d="M3 7h18M3 12h18M3 17h18M7 5v14M13 5v14M19 5v14" strokeWidth={1.6} />
+  </Icon>
+)
+export const IconArrowLeft = (p: P) => (
+  <Icon {...p}>
+    <path d="M19 12H5M11 6l-6 6 6 6" />
+  </Icon>
+)

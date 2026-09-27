@@ -1,52 +1,30 @@
 import { useSyncExternalStore } from 'react'
-import type { ExerciseConfig } from '../exercises/types'
+import { isActivityId, type ActivityId, type Topic } from '../exercises/types'
 
 export type Route =
   | { name: 'home' }
-  | { name: 'play'; config: ExerciseConfig; run: number }
+  | { name: 'topic'; topic: Topic }
+  | { name: 'play'; activity: ActivityId; run: number }
   | { name: 'summary'; id: number }
   | { name: 'progress' }
   | { name: 'settings' }
-
-function configToPath(c: ExerciseConfig): string {
-  switch (c.kind) {
-    case 'conveyor':
-      return `conveyor/${c.flow}/${c.input}`
-    case 'sprint':
-      return `sprint/${c.input}`
-    case 'guitar':
-      return `guitar/${c.drill}`
-    case 'bpm':
-      return `bpm/${c.input}`
-  }
-}
-
-const isInput = (s: string | undefined): s is 'buttons' | 'mic' => s === 'buttons' || s === 'mic'
-
-function pathToConfig(parts: string[]): ExerciseConfig | null {
-  const [kind, a, b] = parts
-  if (kind === 'conveyor' && (a === 'wait' || a === 'continuous') && isInput(b)) return { kind, flow: a, input: b }
-  if (kind === 'sprint' && isInput(a)) return { kind, input: a }
-  if (kind === 'guitar' && (a === 'repeat' || a === 'scale' || a === 'adaptive')) return { kind, drill: a }
-  if (kind === 'bpm' && isInput(a)) return { kind, input: a }
-  return null
-}
 
 export function parseHash(hash: string): Route {
   const [path, query = ''] = hash.replace(/^#\/?/, '').split('?')
   const parts = path.split('/').filter(Boolean)
   const run = Number(new URLSearchParams(query).get('run') ?? 0)
   switch (parts[0]) {
-    case 'play': {
-      const config = pathToConfig(parts.slice(1))
-      return config ? { name: 'play', config, run } : { name: 'home' }
-    }
+    case 'play':
+      return isActivityId(parts[1]) ? { name: 'play', activity: parts[1], run } : { name: 'home' }
     case 'summary':
       return Number.isFinite(Number(parts[1])) ? { name: 'summary', id: Number(parts[1]) } : { name: 'home' }
     case 'progress':
       return { name: 'progress' }
     case 'settings':
       return { name: 'settings' }
+    case 'pauta':
+    case 'violao':
+      return { name: 'topic', topic: parts[0] }
     default:
       return { name: 'home' }
   }
@@ -57,13 +35,15 @@ export function routeHash(r: Route): string {
     case 'home':
       return '#/'
     case 'play':
-      return `#/play/${configToPath(r.config)}${r.run ? `?run=${r.run}` : ''}`
+      return `#/play/${r.activity}${r.run ? `?run=${r.run}` : ''}`
     case 'summary':
       return `#/summary/${r.id}`
     case 'progress':
       return '#/progress'
     case 'settings':
       return '#/settings'
+    case 'topic':
+      return `#/${r.topic}`
   }
 }
 
@@ -74,9 +54,9 @@ export function navigate(r: Route, replace = false) {
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
-/** Inicia (ou reinicia) um exercício; `run` força uma nova montagem. */
-export function play(config: ExerciseConfig, replace = false) {
-  navigate({ name: 'play', config, run: Date.now() }, replace)
+/** Inicia (ou reinicia) uma atividade; `run` força uma nova montagem. */
+export function play(activity: ActivityId, replace = false) {
+  navigate({ name: 'play', activity, run: Date.now() }, replace)
 }
 
 function subscribe(cb: () => void) {

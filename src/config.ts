@@ -87,8 +87,9 @@ export const READING = {
 export const BPM = {
   beatsPerBar: 4,
   countInBars: 1,
-  /** Espaços de pauta percorridos por tempo. */
-  beatSpacing: 6,
+  /** Espaços de pauta percorridos por tempo (mais largo quando há colcheias). */
+  beatSpacing: 7,
+  beatSpacingEighths: 9,
   /** Pontuação base por nota correta e bônus máximo por precisão. */
   hitPoints: 50,
   timingPoints: 50,

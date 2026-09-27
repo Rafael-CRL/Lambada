@@ -1,8 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { listInputDevices, micSupported } from '../audio/microphone'
 import { db, saveSettings, type Settings } from '../db/db'
-import { SCALE_LABELS, type ScaleId } from '../domain/scales'
-import { Button, Segmented, Stepper, Toggle } from '../ui/controls'
+import { Button, Segmented, Stepper } from '../ui/controls'
 
 export function SettingsScreen({ settings }: { settings: Settings }) {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
@@ -33,37 +32,11 @@ export function SettingsScreen({ settings }: { settings: Settings }) {
     <div className="flex flex-col gap-10 py-4">
       <h1 className="text-2xl font-semibold">configurações</h1>
 
-      <Group title="exercícios">
-        <Row label="escala" hint="Solta: casas 0–3 com cordas soltas. Fechada: até a casa 5.">
-          <Segmented<ScaleId>
-            label="Escala"
-            value={settings.scale}
-            onChange={(scale) => saveSettings({ scale })}
-            options={(['solta', 'fechada'] as const).map((v) => ({ value: v, label: SCALE_LABELS[v] }))}
-          />
-        </Row>
-        <Row label="acidentes" hint="Inclui ♯ e ♭ (sem Mi♯, Si♯, Dó♭, Fá♭). Entram depois das naturais dominadas.">
-          <Toggle label="Acidentes" checked={settings.accidentals} onChange={(accidentals) => saveSettings({ accidentals })} />
-        </Row>
-        <Row label="notas por sessão" hint="Esteira, Adaptativo e BPM.">
-          <Stepper label="notas por sessão" value={settings.sessionLength} min={10} max={120} step={5} onChange={(sessionLength) => saveSettings({ sessionLength })} />
-        </Row>
-        <Row label="repetições por nota" hint="Pauta → violão, modo Repetição.">
-          <Stepper label="repetições por nota" value={settings.repetitions} min={1} max={10} onChange={(repetitions) => saveSettings({ repetitions })} />
-        </Row>
-      </Group>
-
-      <Group title="modo BPM">
-        <Row label="andamento">
-          <Stepper label="BPM" value={settings.bpm} min={30} max={200} step={5} format={(v) => `${v} bpm`} onChange={(bpm) => saveSettings({ bpm })} />
-        </Row>
+      <Group title="metrônomo">
         <Row label="tolerância" hint="Janela em torno de cada tempo em que o toque conta.">
           <Stepper label="tolerância" value={settings.toleranceMs} min={40} max={300} step={10} format={(v) => `±${v} ms`} onChange={(toleranceMs) => saveSettings({ toleranceMs })} />
         </Row>
-        <Row
-          label="compensação de latência"
-          hint="Some ao atraso medido do microfone. Se o resumo do BPM indicar tendência de atraso constante, aumente."
-        >
+        <Row label="compensação de latência" hint="Se o resumo indicar atraso constante com o microfone, aumente.">
           <Stepper label="latência" value={settings.latencyMs} min={-100} max={300} step={5} format={(v) => `${v} ms`} onChange={(latencyMs) => saveSettings({ latencyMs })} />
         </Row>
       </Group>

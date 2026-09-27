@@ -4,15 +4,20 @@ import type { AttemptResult } from '../engine/adaptive'
 import { cx } from '../ui/controls'
 import type { Spelling } from './controller'
 
-/** Teclado espelha as três fileiras: QWERTY = ♯, ASDF = naturais, ZXCV = ♭. */
-const KEYS: Record<Accidental, string[]> = {
-  1: ['q', 'w', 'e', 'r', 't', 'y', 'u'],
-  0: ['a', 's', 'd', 'f', 'g', 'h', 'j'],
-  [-1]: ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+/**
+ * Atalhos pelas letras das notas: C D E F G A B. Shift + letra = sustenido,
+ * Alt + letra = bemol. Lê `code` (tecla física) para funcionar com modificadores.
+ */
+function keyFor(letter: Letter, acc: Accidental): string {
+  return acc === 1 ? `⇧${letter}` : acc === -1 ? `alt ${letter}` : letter
 }
 
-function keyFor(letter: Letter, acc: Accidental): string {
-  return KEYS[acc][LETTERS.indexOf(letter)]
+function fromKey(e: KeyboardEvent): { letter: Letter; acc: Accidental } | null {
+  const m = /^Key([A-G])$/.exec(e.code)
+  if (!m || e.ctrlKey || e.metaKey) return null
+  if (e.shiftKey && e.altKey) return null
+  const acc: Accidental = e.shiftKey ? 1 : e.altKey ? -1 : 0
+  return { letter: m[1] as Letter, acc }
 }
 
 export function NoteButtons({
@@ -42,17 +47,14 @@ export function NoteButtons({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
-      const k = e.key.toLowerCase()
-      for (const acc of (accidentals ? [1, 0, -1] : [0]) as Accidental[]) {
-        const idx = KEYS[acc].indexOf(k)
-        if (idx < 0) continue
-        const letter = LETTERS[idx]
-        if (!isAllowedSpelling(letter, acc)) return
-        e.preventDefault()
-        pressRef.current({ letter, acc }, e.timeStamp)
-        return
-      }
+      if (e.repeat) return
+      const k = fromKey(e)
+      if (!k) return
+      // Alt sozinho abriria menus do navegador: sempre consumido aqui
+      e.preventDefault()
+      if (k.acc !== 0 && !accidentals) return
+      if (!isAllowedSpelling(k.letter, k.acc)) return
+      pressRef.current(k, e.timeStamp)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -97,7 +99,7 @@ export function NoteButtons({
                 )}
               >
                 <span>{namePt({ letter, acc })}</span>
-                <span className="pointer-events-none absolute right-1.5 bottom-1 hidden font-mono text-[10px] text-sub uppercase sm:block">
+                <span className="pointer-events-none absolute right-1.5 bottom-1 hidden font-mono text-[10px] text-sub sm:block">
                   {keyFor(letter, acc)}
                 </span>
               </button>

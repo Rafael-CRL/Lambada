@@ -5,6 +5,8 @@ import { Home } from '../screens/Home'
 import { Progress } from '../screens/Progress'
 import { SettingsScreen } from '../screens/Settings'
 import { Summary } from '../screens/Summary'
+import { ActivityList } from '../screens/ActivityList'
+import { Explore } from '../screens/Explore'
 import { cx } from '../ui/controls'
 import { IconChart, IconGear, IconMoon, IconSun } from '../ui/icons'
 import { navigate, useRoute, type Route } from './router'
@@ -16,12 +18,14 @@ export function App() {
   useThemeSync(settings.theme)
 
   if (route.name === 'play') {
-    return <ExerciseScreen key={`${route.run}`} config={route.config} />
+    if (route.activity === 'explore') return <Explore key={route.run} />
+    return <ExerciseScreen key={`${route.run}`} activityId={route.activity} />
   }
 
   return (
     <Shell route={route} theme={settings.theme}>
-      {route.name === 'home' && <Home settings={settings} />}
+      {route.name === 'home' && <Home />}
+      {route.name === 'topic' && <ActivityList key={route.topic} topic={route.topic} />}
       {route.name === 'summary' && <Summary id={route.id} />}
       {route.name === 'progress' && <Progress settings={settings} />}
       {route.name === 'settings' && <SettingsScreen settings={settings} />}

@@ -11,6 +11,8 @@ import {
   staffLines,
   S,
   svgEl,
+  type NoteDraw,
+  type Shape,
 } from '../staff/geometry'
 
 /**
@@ -98,8 +100,16 @@ export class StaffStage {
     }
   }
 
-  addNote(note: Note, x: number, label?: { text: string; opacity: number }): StageNote {
-    const n = new StageNote(note, label)
+  addNote(note: Note, x: number, label?: { text: string; opacity: number }, draw?: NoteDraw): StageNote {
+    const n = new StageNote(note, label, noteShapes(note, draw))
+    n.setX(x)
+    this.notesLayer.append(n.g)
+    return n
+  }
+
+  /** Pausa, barra de compasso ou outro desenho que anda junto com as notas. */
+  addShapes(shapes: Shape[], x: number, extraClass: string): StageNote {
+    const n = new StageNote(null, undefined, shapes, extraClass)
     n.setX(x)
     this.notesLayer.append(n.g)
     return n
@@ -119,14 +129,18 @@ export class StageNote {
   private label: SVGTextElement
   x = 0
   private state: NoteState = null
+  private ghost: SVGGElement | null = null
+  private ghostTimer: number | null = null
 
   constructor(
-    readonly note: Note,
+    readonly note: Note | null,
     label?: { text: string; opacity: number },
+    shapes: Shape[] = note ? noteShapes(note) : [],
+    extraClass = '',
   ) {
-    this.g = svgEl('g', { class: 'note' })
+    this.g = svgEl('g', { class: `note ${extraClass}`.trim() })
     this.lift = svgEl('g', { class: 'lift' })
-    for (const s of noteShapes(note)) this.lift.append(shapeToSvg(s))
+    for (const s of shapes) this.lift.append(shapeToSvg(s))
     this.label = svgEl('text', { x: NOTEHEAD_W / 2, y: LABEL_Y, class: 'note-label', 'text-anchor': 'middle' })
     this.setLabel(label?.text ?? '', label?.opacity ?? 0)
     this.g.append(this.lift, this.label)
@@ -143,6 +157,23 @@ export class StageNote {
     if (this.state) this.g.classList.remove(`is-${this.state}`)
     if (state) this.g.classList.add(`is-${state}`)
     this.state = state
+  }
+
+  /** Mostra, na mesma coluna, a nota que foi ouvida (sombra vermelha). */
+  showGhost(n: Note, seconds = 1.6) {
+    this.hideGhost()
+    // ao lado, para não encavalar com a nota esperada quando forem vizinhas
+    const g = svgEl('g', { class: 'ghost', transform: `translate(${NOTEHEAD_W * 1.6} 0)` })
+    for (const s of noteShapes(n)) g.append(shapeToSvg(s))
+    this.g.append(g)
+    this.ghost = g
+    this.ghostTimer = window.setTimeout(() => this.hideGhost(), seconds * 1000)
+  }
+
+  hideGhost() {
+    if (this.ghostTimer) window.clearTimeout(this.ghostTimer)
+    this.ghost?.remove()
+    this.ghost = null
   }
 
   setLabel(text: string, opacity: number) {

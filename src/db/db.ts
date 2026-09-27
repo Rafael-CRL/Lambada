@@ -1,41 +1,32 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { InputKind, ItemStats, UnlockState } from '../engine/adaptive'
 import type { ScaleId } from '../domain/scales'
-import type { ExerciseConfig } from '../exercises/types'
+import { isActivityId, type ActivityId, type ActivityOptions, type ExerciseConfig } from '../exercises/types'
 
 export type Theme = 'dark' | 'light'
 
 export interface Settings {
   id: 'main'
+  /** região do braço (Solta/Fechada), comum às atividades do Violão */
   scale: ScaleId
-  accidentals: boolean
-  /** Pauta → violão, modo Repetição */
-  repetitions: number
-  /** notas por sessão (esteira, adaptativo) */
-  sessionLength: number
-  bpm: number
   /** janela de tolerância do modo BPM, ± ms */
   toleranceMs: number
   /** compensação manual de latência do microfone (ms) */
   latencyMs: number
   audioDeviceId: string
   theme: Theme
-  /** entrada escolhida por último nos modos de leitura */
-  readingInput: InputKind
+  /** ajustes guardados por atividade */
+  activities: Partial<Record<ActivityId, Partial<ActivityOptions>>>
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   id: 'main',
   scale: 'solta',
-  accidentals: false,
-  repetitions: 4,
-  sessionLength: 40,
-  bpm: 60,
   toleranceMs: 120,
   latencyMs: 0,
   audioDeviceId: '',
   theme: 'dark',
-  readingInput: 'buttons',
+  activities: {},
 }
 
 export interface UnlockRecord extends UnlockState {
@@ -70,6 +61,7 @@ export interface SessionRecord {
   perNote: Record<string, NoteTally>
   /** modo BPM */
   bpm?: number
+  rhythmLevel?: number
   score?: number
   maxCombo?: number
   /** média do |desvio| de tempo nas notas certas (ms) */
@@ -79,7 +71,7 @@ export interface SessionRecord {
 }
 
 export interface BpmRecord {
-  /** `${input}:${bpm}` */
+  /** `${input}:${bpm}:${nível}` */
   id: string
   input: InputKind
   bpm: number
@@ -120,15 +112,25 @@ export async function saveSettings(patch: Partial<Omit<Settings, 'id'>>): Promis
   await db.settings.put({ ...current, ...patch, id: 'main' })
 }
 
+export function recordId(input: InputKind, bpm: number, level = 1): string {
+  return `${input}:${bpm}:${level}`
+}
+
 export function unlockKey(input: InputKind, scale: ScaleId): string {
   return `${input}:${scale}`
 }
 
-export async function getLastExercise(): Promise<ExerciseConfig | null> {
-  const rec = await db.meta.get('lastExercise')
-  return (rec?.value as ExerciseConfig | undefined) ?? null
+export async function getLastActivity(): Promise<ActivityId | null> {
+  const rec = await db.meta.get('lastActivity')
+  return isActivityId(rec?.value as string) ? (rec!.value as ActivityId) : null
 }
 
-export async function setLastExercise(config: ExerciseConfig): Promise<void> {
-  await db.meta.put({ key: 'lastExercise', value: config })
+export async function setLastActivity(id: ActivityId): Promise<void> {
+  await db.meta.put({ key: 'lastActivity', value: id })
+}
+
+/** Salva ajustes de uma atividade (mesclando com os anteriores). */
+export async function saveActivityOptions(id: ActivityId, patch: Partial<ActivityOptions>): Promise<void> {
+  const current = await loadSettings()
+  await saveSettings({ activities: { ...current.activities, [id]: { ...current.activities[id], ...patch } } })
 }

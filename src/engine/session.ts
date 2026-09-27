@@ -21,8 +21,8 @@ import {
  * escala, com persistência incremental no IndexedDB.
  */
 export class StudySession {
-  readonly items: StudyItem[]
-  readonly byId: Map<string, StudyItem>
+  items: StudyItem[]
+  byId: Map<string, StudyItem>
   private stats: Map<string, ItemStats>
   private unlock: UnlockState
   private lastId: string | null = null
@@ -36,7 +36,7 @@ export class StudySession {
     readonly config: ExerciseConfig,
     readonly input: InputKind,
     readonly scale: ScaleId,
-    readonly accidentals: boolean,
+    public accidentals: boolean,
     stats: Map<string, ItemStats>,
     unlock: UnlockState,
     rng: () => number,
@@ -57,6 +57,17 @@ export class StudySession {
     const stats = new Map(rows.map((r) => [r.noteId, r]))
     const unlock = (await db.unlocks.get(unlockKey(input, scale))) ?? EMPTY_UNLOCK
     return new StudySession(config, input, scale, accidentals, stats, { unlocked: unlock.unlocked, retired: unlock.retired }, rng)
+  }
+
+  /** Liga/desliga ♯♭ no meio da sessão: vale para as próximas notas. */
+  setAccidentals(on: boolean) {
+    if (on === this.accidentals) return
+    this.accidentals = on
+    this.items = unlockOrder(scaleItems(this.scale, on))
+    for (const i of this.items) if (!this.byId.has(i.id)) this.byId.set(i.id, i)
+    const up = updateUnlocks(this.items, this.unlock, this.stats, this.input)
+    this.unlock = up.state
+    if (up.newlyUnlocked.length) this.persistUnlock()
   }
 
   get active(): StudyItem[] {

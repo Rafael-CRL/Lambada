@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, type ReactNode } from 'react'
 import { navigate } from '../app/router'
-import { db, type SessionRecord } from '../db/db'
+import { db, recordId, type SessionRecord } from '../db/db'
 import { namePt, parseNote } from '../domain/notes'
 import { SCALE_LABELS } from '../domain/scales'
-import { startExercise } from '../exercises/start'
-import { exerciseSubtitle, exerciseTitle } from '../exercises/types'
+import { startActivity } from '../exercises/start'
+import { exerciseSubtitle, exerciseTitle, isScoreConfig } from '../exercises/types'
 import { StaffSvg } from '../staff/StaffSvg'
 import { Button, cx, Kbd } from '../ui/controls'
 import { IconRedo, IconTrophy } from '../ui/icons'
@@ -17,11 +17,23 @@ async function loadSummary(id: number) {
     (await db.sessions
       .where('mode')
       .equals(rec.mode)
-      .filter((s) => s.completed !== false && s.startedAt < rec.startedAt && (rec.bpm === undefined || s.bpm === rec.bpm))
+      .filter(
+        (s) =>
+          s.completed !== false &&
+          s.startedAt < rec.startedAt &&
+          (rec.bpm === undefined || (s.bpm === rec.bpm && (s.rhythmLevel ?? 1) === (rec.rhythmLevel ?? 1))),
+      )
       .reverse()
       .sortBy('startedAt'))[0] ?? null
-  const record = rec.bpm !== undefined ? await db.records.get(`${rec.input}:${rec.bpm}`) : null
+  const record = rec.bpm !== undefined ? await db.records.get(recordId(rec.input, rec.bpm, rec.rhythmLevel)) : null
   return { rec, prev, record }
+}
+
+/** "De novo": a mesma atividade (sessões antigas voltam para o tópico). */
+function again(rec: SessionRecord) {
+  const c = rec.config as unknown
+  if (isScoreConfig(c)) startActivity(c.activity)
+  else navigate({ name: 'topic', topic: rec.input === 'mic' ? 'violao' : 'pauta' })
 }
 
 const acc = (s: SessionRecord) => (s.attempts ? s.correct / s.attempts : 0)
@@ -31,7 +43,7 @@ export function Summary({ id }: { id: number }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && data?.rec && !(e.target instanceof HTMLButtonElement)) startExercise(data.rec.config)
+      if (e.key === 'Enter' && data?.rec && !(e.target instanceof HTMLButtonElement)) again(data.rec)
       if (e.key === 'Escape') navigate({ name: 'home' })
     }
     window.addEventListener('keydown', onKey)
@@ -42,8 +54,9 @@ export function Summary({ id }: { id: number }) {
   const { rec, prev, record } = data
   if (!rec) return <p className="py-20 text-center text-sub">Sessão não encontrada.</p>
 
-  const isBpm = rec.config.kind === 'bpm'
-  const isSprint = rec.config.kind === 'sprint'
+  const c = rec.config as unknown
+  const isBpm = rec.score !== undefined
+  const isSprint = isScoreConfig(c) ? c.tempo === 'free' && c.content !== 'scale' && c.duration === 'timed' : (c as { kind: string }).kind === 'sprint'
   const newRecord = isBpm && record && record.score === rec.score && record.at === rec.endedAt && (rec.score ?? 0) > 0
   const worst = Object.entries(rec.perNote)
     .map(([noteId, t]) => ({ noteId, errors: t.wrong + t.wrongOctave, total: t.correct + t.wrong + t.wrongOctave }))
@@ -58,17 +71,17 @@ export function Summary({ id }: { id: number }) {
     <div className="flex flex-col gap-8 py-4">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">
-          {exerciseTitle(rec.config)} <span className="text-sub">· {exerciseSubtitle(rec.config)}</span>
+          {exerciseTitle(rec.config)} {exerciseSubtitle(rec.config) && <span className="text-sub">· {exerciseSubtitle(rec.config)}</span>}
         </h1>
         <p className="text-sm text-sub">
           {SCALE_LABELS[rec.scale]} · {rec.accidentals ? 'com acidentes' : 'naturais'}
-          {isBpm && ` · ${rec.bpm} bpm`} · {new Date(rec.startedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+          {isBpm && ` · ${rec.bpm} bpm · nível ${rec.rhythmLevel ?? 1}`} · {new Date(rec.startedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
         </p>
       </div>
 
       {newRecord && (
         <div className="flex animate-pop items-center gap-3 self-start rounded-xl bg-accent px-4 py-2 font-medium text-accent-ink">
-          <IconTrophy /> novo recorde a {rec.bpm} bpm
+          <IconTrophy /> novo recorde a {rec.bpm} bpm no nível {rec.rhythmLevel ?? 1}
         </div>
       )}
 
@@ -143,7 +156,7 @@ export function Summary({ id }: { id: number }) {
       )}
 
       <div className="flex flex-wrap gap-3">
-        <Button variant="primary" onClick={() => startExercise(rec.config)} autoFocus>
+        <Button variant="primary" onClick={() => again(rec)} autoFocus>
           <IconRedo /> de novo <Kbd>enter</Kbd>
         </Button>
         <Button onClick={() => navigate({ name: 'home' })}>início</Button>

@@ -140,6 +140,25 @@
 .note.is-oct .note-label {
   fill: var(--color-oct);
 }
+/* nota ouvida pelo microfone, desenhada ao lado da esperada */
+.note .ghost,
+.note .ghost .part-ledger {
+  fill: var(--color-err);
+  stroke: var(--color-err);
+  opacity: 0.6;
+}
+.note .ghost {
+  animation: fade-in 160ms ease-out;
+}
+.note .ghost text.smufl {
+  stroke: none;
+}
+.note.is-bar {
+  stroke: var(--color-sub);
+}
+.note.is-rest {
+  fill: var(--color-sub);
+}
 .note.is-muted {
   opacity: 0.35;
 }
@@ -183,6 +202,14 @@
   font-size: 9px;
   font-family: var(--font-mono);
 }
+.fb-cell {
+  fill: transparent;
+  cursor: pointer;
+}
+.fb-cell:hover {
+  fill: var(--color-surface-2);
+  fill-opacity: 0.6;
+}
 .fb-marker circle {
   stroke: var(--color-bg);
   stroke-width: 2;
@@ -197,6 +224,17 @@
 }
 .fb-played circle {
   fill: var(--color-err);
+}
+.fb-pick circle {
+  fill: var(--color-accent);
+}
+.fb-pick text {
+  fill: var(--color-accent-ink);
+}
+.fb-same circle {
+  fill: transparent;
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
 }
 .fb-neutral circle {
   fill: var(--color-surface-2);

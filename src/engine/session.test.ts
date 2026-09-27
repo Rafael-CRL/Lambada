@@ -1,9 +1,10 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, test } from 'vitest'
 import { db } from '../db/db'
+import { buildConfig } from '../exercises/types'
 import { StudySession } from './session'
 
-const config = { kind: 'conveyor', flow: 'wait', input: 'buttons' } as const
+const config = buildConfig('reading', undefined, 'solta')
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -37,7 +38,7 @@ describe('sessão', () => {
     const buttons = await StudySession.open(config, 'solta', false)
     buttons.record('E5', 'wrong', 1)
     await buttons.finish(true)
-    const mic = await StudySession.open({ kind: 'guitar', drill: 'adaptive' }, 'solta', false)
+    const mic = await StudySession.open(buildConfig('notes', undefined, 'solta'), 'solta', false)
     expect(mic.statsOf('E5')).toBeUndefined()
     mic.record('E5', 'wrong-octave', 2)
     const rec = await mic.finish(true)

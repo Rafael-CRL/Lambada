@@ -1,12 +1,22 @@
 import type { Microphone } from '../audio/microphone'
+import { playNote } from '../audio/synth'
 import type { TrackerEvent } from '../audio/tracker'
 import type { SessionRecord, Settings } from '../db/db'
 import type { Position } from '../domain/fretboard'
-import { matchButton, matchPitch, namePt, type Note } from '../domain/notes'
-import type { StudyItem } from '../domain/scales'
+import {
+  defaultSpelling,
+  matchButton,
+  matchPitch,
+  midiOf,
+  namePt,
+  namePtOctave,
+  writtenFromSounding,
+  type Note,
+} from '../domain/notes'
+import { displayPosition, type StudyItem } from '../domain/scales'
 import type { AttemptResult } from '../engine/adaptive'
 import type { StudySession } from '../engine/session'
-import { ExerciseClock, FrameLoop, type StaffStage } from './stage'
+import { ExerciseClock, FrameLoop, type StaffStage, type StageNote } from './stage'
 import type { ExerciseConfig } from './types'
 
 export interface Feedback {
@@ -25,14 +35,14 @@ export interface FretFeedback {
 }
 
 export interface Hud {
-  progress: number
+  /** null = sem barra (sessão sem fim) */
+  progress: number | null
   progressText: string
   feedback: Feedback | null
   stats: { label: string; value: string }[]
   toast: string | null
   countdown: string | null
   fret: FretFeedback | null
-  reps: { done: number; total: number } | null
 }
 
 export const EMPTY_HUD: Hud = {
@@ -43,7 +53,6 @@ export const EMPTY_HUD: Hud = {
   toast: null,
   countdown: null,
   fret: null,
-  reps: null,
 }
 
 export interface ControllerDeps {
@@ -88,9 +97,36 @@ export abstract class Controller {
   /** Resposta do usuário; devolve o julgamento (para o botão piscar) ou null se ignorada. */
   protected abstract answer(a: Answer): AttemptResult | null
 
+  /** Nota esperada agora (para dar o som do botão na oitava certa). */
+  protected target(): StudyItem | null {
+    return null
+  }
+
   answerButton(spelling: Spelling, perfTime: number): AttemptResult | null {
     if (!this.started || this.clock.paused || this.finished) return null
-    return this.answer({ kind: 'button', spelling, time: this.clock.now(perfTime) })
+    const target = this.target()
+    const result = this.answer({ kind: 'button', spelling, time: this.clock.now(perfTime) })
+    const timbre = this.d.config.timbre
+    if (timbre !== 'off') playNote(pressedSoundingMidi(spelling, target), timbre)
+    return result
+  }
+
+  /** Erro pelo microfone: mostra o que foi ouvido e onde fica a nota certa. */
+  protected micMistake(item: StudyItem, writtenMidi: number, result: AttemptResult, sn?: StageNote) {
+    sn?.showGhost(defaultSpelling(writtenMidi))
+    const heard = namePtOctave(writtenFromSounding(defaultSpelling(writtenMidi - 12)))
+    const s = this.d.session
+    this.d.setHud({
+      fret: {
+        target: item.position,
+        played: displayPosition(s.scale, writtenMidi - 12, s.accidentals),
+        targetName: namePtOctave(item.written),
+        playedName: heard,
+      },
+    })
+    if (result === 'wrong-octave')
+      this.feedback('oct', 'nota certa, oitava errada', `ouvi ${heard} · ${octaveHint(midiOf(item.written), writtenMidi)}`)
+    else this.feedback('err', namePtOctave(item.written), `ouvi ${heard}`)
   }
 
   private frame(perf: number) {
@@ -167,4 +203,19 @@ export function octaveHint(expectedWrittenMidi: number, playedWrittenMidi: numbe
   const n = Math.abs(diff)
   const oct = n === 1 ? 'uma oitava' : `${n} oitavas`
   return diff > 0 ? `toque ${oct} acima` : `toque ${oct} abaixo`
+}
+
+/**
+ * MIDI soando do botão apertado: a grafia na oitava mais próxima da nota
+ * esperada (acerto soa exatamente a nota da pauta).
+ */
+export function pressedSoundingMidi(spelling: Spelling, target: StudyItem | null): number {
+  const ref = target ? midiOf(target.written) : 72
+  const base = midiOf({ ...spelling, octave: 4 })
+  let best = base
+  for (let o = -3; o <= 3; o++) {
+    const m = base + 12 * o
+    if (Math.abs(m - ref) < Math.abs(best - ref)) best = m
+  }
+  return best - 12
 }

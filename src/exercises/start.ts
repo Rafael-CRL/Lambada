@@ -1,11 +1,11 @@
 import { play } from '../app/router'
 import { ensureAudioRunning } from '../audio/clock'
-import { setLastExercise } from '../db/db'
-import type { ExerciseConfig } from './types'
+import { setLastActivity } from '../db/db'
+import type { ActivityId } from './types'
 
 /** Chamado direto do clique: libera o AudioContext dentro do gesto do usuário. */
-export function startExercise(config: ExerciseConfig, replace = false) {
+export function startActivity(id: ActivityId, replace = false) {
   void ensureAudioRunning()
-  void setLastExercise(config)
-  play(config, replace)
+  void setLastActivity(id)
+  play(id, replace)
 }
