@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Lexend Deca Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  /* tema escuro (padrão); o claro redefine as mesmas variáveis */
+  --color-bg: #1e2023;
+  --color-surface: #26292d;
+  --color-surface-2: #2f3237;
+  --color-line: #3b3f45;
+  --color-sub: #8a8e96;
+  --color-text: #dcd8ca;
+  --color-accent: #e2b35f;
+  --color-accent-ink: #1e2023;
+  --color-ok: #8fc488;
+  --color-err: #e5707a;
+  --color-oct: #b9a0ec;
+
+  --animate-pop: pop 180ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+  --animate-shake: shake 220ms ease-out;
+  --animate-fade-in: fade-in 160ms ease-out;
+
+  @keyframes pop {
+    0% { transform: scale(0.94); opacity: 0.4; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+[data-theme="light"] {
+  --color-bg: #f2efe7;
+  --color-surface: #e8e4d9;
+  --color-surface-2: #ddd8cb;
+  --color-line: #cbc5b6;
+  --color-sub: #6b6658;
+  --color-text: #2b2924;
+  --color-accent: #95590a;
+  --color-accent-ink: #fbf8f1;
+  --color-ok: #3b8541;
+  --color-err: #c13a47;
+  --color-oct: #7c4fb8;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-bg);
+    -webkit-tap-highlight-color: transparent;
+  }
+  html[data-theme="light"] {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-bg font-sans text-text antialiased;
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- pauta */
+
+.staff {
+  display: block;
+  overflow: visible;
+}
+.smufl {
+  font-family: "Bravura";
+  font-size: 40px;
+}
+.staff .part-staff {
+  stroke: var(--color-line);
+}
+.staff .part-clef {
+  fill: var(--color-sub);
+}
+.note {
+  fill: var(--color-text);
+  stroke: var(--color-text);
+  transition:
+    fill 160ms ease,
+    stroke 160ms ease,
+    opacity 220ms ease;
+}
+.note text.smufl {
+  stroke: none;
+}
+.note .part-ledger {
+  stroke: var(--color-sub);
+}
+.note-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--color-sub);
+  stroke: none;
+  transition: opacity 300ms ease, fill 160ms ease;
+}
+.note.is-ok {
+  fill: var(--color-ok);
+  stroke: var(--color-ok);
+}
+.note.is-err {
+  fill: var(--color-err);
+  stroke: var(--color-err);
+}
+.note.is-err .note-label,
+.note.is-oct .note-label {
+  fill: currentColor;
+}
+.note.is-err .note-label {
+  fill: var(--color-err);
+}
+.note.is-oct {
+  fill: var(--color-oct);
+  stroke: var(--color-oct);
+}
+.note.is-oct .note-label {
+  fill: var(--color-oct);
+}
+.note.is-muted {
+  opacity: 0.35;
+}
+.note.is-gone {
+  opacity: 0;
+}
+.note .lift {
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.note.is-ok .lift {
+  transform: translateY(-6px);
+}
+.hit-line {
+  stroke: var(--color-accent);
+  opacity: 0.2;
+}
+
+/* ---------------------------------------------------------------- braço */
+
+.fretboard {
+  display: block;
+  overflow: visible;
+}
+.fb-fret {
+  stroke: var(--color-line);
+  stroke-width: 1.5;
+}
+.fb-nut {
+  stroke: var(--color-sub);
+  stroke-width: 4;
+}
+.fb-string {
+  stroke: var(--color-sub);
+  opacity: 0.8;
+}
+.fb-inlay {
+  fill: var(--color-surface-2);
+}
+.fb-fretnum {
+  fill: var(--color-sub);
+  font-size: 9px;
+  font-family: var(--font-mono);
+}
+.fb-marker circle {
+  stroke: var(--color-bg);
+  stroke-width: 2;
+}
+.fb-marker text {
+  font-size: 7.5px;
+  font-weight: 600;
+  fill: var(--color-accent-ink);
+}
+.fb-target circle {
+  fill: var(--color-ok);
+}
+.fb-played circle {
+  fill: var(--color-err);
+}
+.fb-neutral circle {
+  fill: var(--color-surface-2);
+  stroke: var(--color-line);
+}
+.fb-neutral text {
+  fill: var(--color-sub);
+}
+.fb-heat text {
+  fill: var(--color-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
