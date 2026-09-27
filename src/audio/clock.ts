@@ -33,11 +33,9 @@ export function isAudioRunning(): boolean {
 export async function ensureAudioRunning(): Promise<boolean> {
   const c = audioContext()
   if (c.state !== 'running') {
-    try {
-      await c.resume()
-    } catch {
-      /* navegador recusou; a UI pede um clique */
-    }
+    // sem gesto do usuário o Chrome deixa resume() pendente indefinidamente
+    const timeout = new Promise((r) => setTimeout(r, 300))
+    await Promise.race([c.resume().catch(() => {}), timeout])
   }
   return c.state === 'running'
 }
