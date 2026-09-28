@@ -32,12 +32,15 @@ export function SettingsScreen({ settings }: { settings: Settings }) {
     <div className="flex flex-col gap-10 py-4">
       <h1 className="text-2xl font-semibold">configurações</h1>
 
-      <Group title="metrônomo">
-        <Row label="tolerância" hint="Janela em torno de cada tempo em que o toque conta.">
+      <Group title="metrônomo e ritmo">
+        <Row label="tolerância" hint="Janela em torno de cada tempo em que o toque (ou a batida) conta.">
           <Stepper label="tolerância" value={settings.toleranceMs} min={40} max={300} step={10} format={(v) => `±${v} ms`} onChange={(toleranceMs) => saveSettings({ toleranceMs })} />
         </Row>
         <Row label="compensação de latência" hint="Se o resumo indicar atraso constante com o microfone, aumente.">
           <Stepper label="latência" value={settings.latencyMs} min={-100} max={300} step={5} format={(v) => `${v} ms`} onChange={(latencyMs) => saveSettings({ latencyMs })} />
+        </Row>
+        <Row label="atraso ao bater" hint="Se as batidas no espaço saem sempre atrasadas (fone bluetooth, por exemplo), aumente.">
+          <Stepper label="atraso ao bater" value={settings.tapLatencyMs} min={-100} max={300} step={5} format={(v) => `${v} ms`} onChange={(tapLatencyMs) => saveSettings({ tapLatencyMs })} />
         </Row>
       </Group>
 

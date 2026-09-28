@@ -8,6 +8,7 @@ import { SettingsScreen } from '../screens/Settings'
 import { Summary } from '../screens/Summary'
 import { ActivityList } from '../screens/ActivityList'
 import { Explore } from '../screens/Explore'
+import { RhythmPractice } from '../screens/RhythmPractice'
 import { cx } from '../ui/controls'
 import { IconChart, IconGear, IconMoon, IconSun } from '../ui/icons'
 import { navigate, useRoute, type Route } from './router'
@@ -20,6 +21,7 @@ export function App() {
 
   if (route.name === 'play') {
     if (route.activity === 'explore') return <Explore key={route.run} />
+    if (route.activity === 'rhythm') return <RhythmPractice key={route.run} />
     return <ExerciseScreen key={`${route.run}`} activityId={route.activity} />
   }
   if (route.name === 'lesson') return <LessonScreen key={`${route.lesson}-${route.run}`} lessonId={route.lesson} />

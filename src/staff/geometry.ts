@@ -9,6 +9,8 @@ import { ledgerSteps, staffStep, stemUp } from '../domain/staff'
 
 /** Espaço entre linhas */
 export const S = 10
+/** passo da 3ª linha (Si4), onde fica a linha da pauta de ritmo */
+const MIDDLE_STEP = 4
 export const FONT_SIZE = 4 * S
 /** y da primeira linha (Mi4 escrito) */
 export const BOTTOM_Y = 82
@@ -29,6 +31,10 @@ export const GLYPH = {
   noteheadWhole: '\uE0A2',
   sharp: '\uE262',
   flat: '\uE260',
+  natural: '\uE261',
+  percussionClef: '\uE069',
+  /** timeSig0; os dígitos seguem em ordem */
+  timeSig0: '\uE080',
   dot: '\uE1E7',
   flag8thUp: '\uE240',
   flag8thDown: '\uE241',
@@ -45,7 +51,7 @@ export function yOfStep(step: number): number {
 }
 
 export type Shape =
-  | { k: 'glyph'; x: number; y: number; ch: string; part: 'head' | 'acc' | 'clef' | 'dot' | 'flag' | 'rest' }
+  | { k: 'glyph'; x: number; y: number; ch: string; part: 'head' | 'acc' | 'clef' | 'dot' | 'flag' | 'rest' | 'timesig' }
   | {
       k: 'line'
       x1: number
@@ -75,6 +81,10 @@ export function clefShape(): Shape {
 export interface NoteDraw {
   /** figura (padrão: semínima) */
   figure?: Figure
+  /** haste para cima (true) ou para baixo (false), sem ser barra de colcheia */
+  up?: boolean
+  /** mostra o ♮ numa nota natural (lição do bequadro) */
+  natural?: boolean
   /** haste com direção e ponta forçadas (colcheias ligadas) */
   stem?: { up: boolean; toY: number }
   /** barra de colcheia até a haste da nota seguinte, dx unidades à direita */
@@ -111,16 +121,18 @@ export function noteShapes(n: Note, draw: NoteDraw = {}): Shape[] {
   }
   if (n.acc !== 0) {
     shapes.push({ k: 'glyph', x: headX + (n.acc === 1 ? -1.45 * S : -1.3 * S), y, ch: n.acc === 1 ? GLYPH.sharp : GLYPH.flat, part: 'acc' })
+  } else if (draw.natural) {
+    shapes.push({ k: 'glyph', x: headX - 1.2 * S, y, ch: GLYPH.natural, part: 'acc' })
   }
   const head = whole ? GLYPH.noteheadWhole : figure === 'half' || figure === 'dotted-half' ? GLYPH.noteheadHalf : GLYPH.notehead
   shapes.push({ k: 'glyph', x: headX, y, ch: head, part: 'head' })
-  if (figure === 'dotted-half') {
+  if (figure === 'dotted-half' || figure === 'dotted-quarter') {
     // o ponto fica sempre num espaço
     const dotY = step % 2 === 0 ? yOfStep(step + 1) : y
     shapes.push({ k: 'glyph', x: NOTEHEAD_W + 0.3 * S, y: dotY, ch: GLYPH.dot, part: 'dot' })
   }
   if (!whole) {
-    const up = draw.stem?.up ?? stemUp(step)
+    const up = draw.stem?.up ?? draw.up ?? stemUp(step)
     const sx = stemX(up)
     const y1 = up ? y - 0.17 * S : y + 0.17 * S
     const y2 = draw.stem?.toY ?? naturalStemEnd(n, up)
@@ -142,8 +154,42 @@ export function restShapes(figure: Figure): Shape[] {
   return [{ k: 'glyph', x: 0, y: yOfStep(4), ch: GLYPH.restQuarter, part: 'rest' }]
 }
 
-export function barlineShapes(): Shape[] {
-  return [{ k: 'line', x1: 0, x2: 0, y1: yOfStep(0), y2: yOfStep(8), w: 0.16 * S, part: 'barline' }]
+export function barlineShapes(single = false, final = false): Shape[] {
+  // pauta de uma linha: barra curta, cruzando a linha do meio
+  const [y1, y2] = single ? [yOfStep(6), yOfStep(2)] : [yOfStep(0), yOfStep(8)]
+  const bar: Shape = { k: 'line', x1: 0, x2: 0, y1, y2, w: 0.16 * S, part: 'barline' }
+  if (!final) return [bar]
+  // barra final: fina + grossa
+  return [
+    { ...bar, x1: -0.7 * S, x2: -0.7 * S },
+    { ...bar, x1: 0, x2: 0, w: 0.5 * S },
+  ]
+}
+
+/** Linha única (pauta de ritmo), na altura da 3ª linha. */
+export function singleLine(x1: number, x2: number): Shape {
+  const y = yOfStep(MIDDLE_STEP)
+  return { k: 'line', x1, x2, y1: y, y2: y, w: 0.13 * S, part: 'staff' }
+}
+
+export function percussionClefShape(): Shape {
+  return { k: 'glyph', x: CLEF_X, y: yOfStep(MIDDLE_STEP), ch: GLYPH.percussionClef, part: 'clef' }
+}
+
+/** Largura de um dígito da fórmula de compasso (Bravura: ~1,8 espaço). */
+export const TIMESIG_W = 1.8 * S
+
+/**
+ * Fórmula de compasso (x/4). Na pauta de cinco linhas, o de cima ocupa as
+ * linhas 3–5 e o de baixo as linhas 1–3; na de uma linha, acima e abaixo dela.
+ */
+export function timeSigShapes(beats: number, x: number, single = false): Shape[] {
+  const digit = (n: number) => String.fromCharCode(GLYPH.timeSig0.charCodeAt(0) + n)
+  const [top, bottom] = single ? [yOfStep(MIDDLE_STEP) - S, yOfStep(MIDDLE_STEP) + S] : [yOfStep(6), yOfStep(2)]
+  return [
+    { k: 'glyph', x, y: top, ch: digit(beats), part: 'timesig' },
+    { k: 'glyph', x, y: bottom, ch: digit(4), part: 'timesig' },
+  ]
 }
 
 /**

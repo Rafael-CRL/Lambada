@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { RHYTHM_LEVELS } from '../domain/rhythm'
-import { SCALE_LABELS, type ScaleId } from '../domain/scales'
+import { RHYTHM_LEVELS, type Meter } from '../domain/rhythm'
+import { NOTE_SET_LABELS, SCALE_LABELS, type NoteSet, type ScaleId } from '../domain/scales'
 import { cx, Segmented, Stepper } from '../ui/controls'
-import { IconFrets, IconHourglass, IconMetronome, IconSpeaker, IconStaffMap } from '../ui/icons'
+import { IconFrets, IconHourglass, IconLines, IconMetronome, IconNote, IconSpeaker, IconStaffMap } from '../ui/icons'
 import { TIMED_SECONDS, type Control, type Duration, type ExerciseConfig, type Tempo, type Timbre } from './types'
 
 export interface OptionChange {
@@ -13,6 +13,8 @@ export interface OptionChange {
   timbre?: Timbre
   accidentals?: boolean
   scale?: ScaleId
+  notes?: NoteSet
+  meter?: Meter
 }
 
 /**
@@ -122,8 +124,9 @@ export function ControlsDock({
               onChange={(duration) => onChange({ duration })}
               options={[
                 { value: 'infinite', label: '∞' },
-                { value: 'short', label: '8 comp.' },
-                { value: 'long', label: '16' },
+                // tempo livre não tem compasso: 8 compassos = 32 notas
+                { value: 'short', label: config.tempo === 'free' ? '32 notas' : '8 comp.' },
+                { value: 'long', label: config.tempo === 'free' ? '64' : '16' },
                 ...(config.tempo === 'free' ? [{ value: 'timed' as const, label: `${TIMED_SECONDS} s` }] : []),
               ]}
             />
@@ -149,6 +152,34 @@ export function ControlsDock({
                 { value: 'off', label: 'Naturais' },
                 { value: 'on', label: 'Com ♯ ♭' },
               ]}
+            />
+          )}
+          {open === 'figures' && (
+            <div className="flex flex-col gap-1.5">
+              <Segmented<string>
+                size="sm"
+                label="Figuras"
+                value={String(config.level)}
+                onChange={(v) => onChange({ level: Number(v) })}
+                options={RHYTHM_LEVELS.map((l) => ({ value: String(l.level), label: String(l.level) }))}
+              />
+              <span className="text-xs text-sub">figuras: {level.label}</span>
+            </div>
+          )}
+          {open === 'meter' && (
+            <Segmented<string>
+              label="Compasso"
+              value={String(config.meter ?? 4)}
+              onChange={(v) => onChange({ meter: Number(v) as Meter })}
+              options={['2', '3', '4'].map((v) => ({ value: v, label: `${v}/4` }))}
+            />
+          )}
+          {open === 'notes' && (
+            <Segmented<NoteSet>
+              label="Notas"
+              value={config.notes ?? 'todas'}
+              onChange={(notes) => onChange({ notes })}
+              options={(['linhas', 'espacos', 'suplementares', 'todas'] as const).map((v) => ({ value: v, label: NOTE_SET_LABELS[v] }))}
             />
           )}
           {open === 'region' && (
@@ -196,6 +227,12 @@ export function ControlsDock({
             )
           case 'region':
             return button(c, 'Região do braço', <IconFrets />)
+          case 'notes':
+            return button(c, 'Notas', <IconLines />)
+          case 'figures':
+            return button(c, 'Figuras', <IconNote />)
+          case 'meter':
+            return button(c, 'Compasso', <span className="font-mono text-xs leading-none">{config.meter ?? 4}/4</span>)
         }
       })}
     </div>

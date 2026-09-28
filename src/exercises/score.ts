@@ -1,5 +1,5 @@
 import { Metronome } from '../audio/metronome'
-import { BPM, DETECTION, READING } from '../config'
+import { BPM, DETECTION, LESSON, READING } from '../config'
 import { namePt } from '../domain/notes'
 import { generateBar, type Figure, type RhythmEvent, type RhythmLevel } from '../domain/rhythm'
 import { scaleSequence, type StudyItem } from '../domain/scales'
@@ -89,12 +89,16 @@ interface ScoreEvent {
   first: AttemptResult | null
   headSince: number | null
   revealUntil: number
+  /** tempo livre com botões: depois de um erro, a certa fica à vista até aqui e a fila segue */
+  holdUntil?: number
 }
 
 /**
- * A partitura rolando em compassos 4/4.
- * - Tempo livre: a nota na linha espera a resposta; as seguintes aguardam atrás.
- * - Metrônomo: x = linha + (instante do tempo − agora) × velocidade, no relógio de áudio.
+ * A partitura rolando.
+ * - Tempo livre: semibreves em fila, sem compasso (não há ritmo); a nota na
+ *   linha espera a resposta. Com botões, errou: mostra a certa e segue.
+ * - Metrônomo: compassos 4/4 com figuras de verdade;
+ *   x = linha + (instante do tempo − agora) × velocidade, no relógio de áudio.
  */
 export class ScoreController extends Controller {
   private readonly metro: boolean
@@ -138,7 +142,7 @@ export class ScoreController extends Controller {
     this.grace = d.mic ? DETECTION.attackIgnore + DETECTION.stableTime + 0.12 : 0
     this.content = new ContentSource(c.content, d.session)
     this.timed = !this.metro && c.content === 'random' && c.duration === 'timed'
-    this.maxBars = c.content === 'random' && (c.duration === 'short' || c.duration === 'long') ? DURATION_BARS[c.duration] : null
+    this.maxBars = c.content !== 'random' ? null : (c.bars ?? (c.duration === 'short' || c.duration === 'long' ? DURATION_BARS[c.duration] : null))
     this.rng = rng
     if (this.metro) this.metronome = new Metronome(c.bpm)
   }
@@ -146,8 +150,10 @@ export class ScoreController extends Controller {
   // ------------------------------------------------------------- partitura
 
   private makeBar(): RhythmEvent[] {
-    if (this.metro) return generateBar(this.level, this.rng, BPM.beatsPerBar)
-    return [0, 1, 2, 3].map((b) => ({ figure: 'quarter' as Figure, rest: false, beatInBar: b }))
+    const c = this.d.config
+    if (this.metro) return generateBar(c.figures ? { cells: c.figures } : this.level, this.rng, BPM.beatsPerBar)
+    // sem ritmo: semibreves (a figura não quer dizer duração aqui)
+    return [0, 1, 2, 3].map((b) => ({ figure: 'whole' as Figure, rest: false, beatInBar: b }))
   }
 
   /** Gera compassos até cobrir `uptoBeat` (sob demanda, para o sorteio seguir o desempenho). */
@@ -224,7 +230,7 @@ export class ScoreController extends Controller {
     const stage = this.d.stage
     e.spawned = true
     e.x = x
-    if (e.barStart && e.beat > 0) e.bar = stage.addShapes(barlineShapes(), x - 0.3 * this.beatPx, 'is-bar')
+    if (this.metro && e.barStart && e.beat > 0) e.bar = stage.addShapes(barlineShapes(), x - 0.3 * this.beatPx, 'is-bar')
     if (e.rest) {
       e.sn = stage.addShapes(restShapes(e.figure), x, 'is-rest')
       return
@@ -272,6 +278,17 @@ export class ScoreController extends Controller {
     const visibleBeats = Math.ceil(stage.width / this.beatPx) + 2
     const currentBeat = this.metro ? (now - this.base) / this.spb : (this.head?.beat ?? 0)
     this.extend(currentBeat + visibleBeats)
+
+    // a certa ficou à vista o bastante: a fila segue
+    const held = this.head
+    if (held?.holdUntil !== undefined && now >= held.holdUntil) {
+      held.holdUntil = undefined
+      held.resolved = true
+      held.revealUntil = 0
+      held.sn?.setLabel('', 0)
+      const next = this.head
+      if (next) next.headSince = now
+    }
 
     const step = READING.waitSpeed * S * dt
     for (const e of this.events) {
@@ -348,7 +365,7 @@ export class ScoreController extends Controller {
 
   private answerFree(a: Answer): AttemptResult | null {
     const e = this.head
-    if (!e?.item || !e.spawned) return null
+    if (!e?.item || !e.spawned || e.holdUntil !== undefined) return null
     const result = judge(e.item, a)
     if (!e.first) this.record(e, result, Math.max(0, a.time - (e.headSince ?? a.time)))
     if (result === 'correct') {
@@ -360,6 +377,11 @@ export class ScoreController extends Controller {
       if (next) next.headSince = a.time
     } else {
       this.reveal(e, result, a)
+      // botões: não para no erro; o violão espera a nota certa (tocar a certa é o treino)
+      if (!this.d.mic) {
+        e.holdUntil = a.time + LESSON.revealTime
+        e.revealUntil = e.holdUntil
+      }
     }
     this.hud(a.time)
     return result
@@ -450,8 +472,13 @@ export class ScoreController extends Controller {
     const headBeat = this.head?.beat ?? this.bars * BPM.beatsPerBar
     const bar = Math.floor(headBeat / BPM.beatsPerBar) + 1
     const total = this.content.kind === 'repeat' ? len : this.maxBars
-    if (total) return { value: headBeat / (total * BPM.beatsPerBar), text: `${Math.min(bar, total)}/${total}` }
-    return { value: null, text: '' }
+    if (!total) return { value: null, text: '' }
+    // tempo livre não tem compasso: conta notas
+    if (!this.metro && this.content.kind === 'random') {
+      const notes = total * BPM.beatsPerBar
+      return { value: headBeat / notes, text: `${Math.min(headBeat, notes)}/${notes}` }
+    }
+    return { value: headBeat / (total * BPM.beatsPerBar), text: `${Math.min(bar, total)}/${total}` }
   }
 
   private hud(now: number) {

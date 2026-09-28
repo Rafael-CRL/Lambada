@@ -1,4 +1,5 @@
-import type { ScaleId } from '../domain/scales'
+import type { CellId, Meter } from '../domain/rhythm'
+import type { NoteSet, ScaleId } from '../domain/scales'
 import type { InputKind } from '../engine/adaptive'
 
 /**
@@ -7,8 +8,8 @@ import type { InputKind } from '../engine/adaptive'
  * ajustes mudam dentro da própria tela.
  */
 
-export type ActivityId = 'reading' | 'repeat' | 'scale' | 'notes' | 'explore'
-export type Topic = 'pauta' | 'violao'
+export type ActivityId = 'reading' | 'rhythm' | 'repeat' | 'scale' | 'notes' | 'explore'
+export type Topic = 'teoria' | 'pauta' | 'violao'
 
 /** O que aparece na pauta. */
 export type Content = 'random' | 'scale' | 'repeat'
@@ -19,7 +20,7 @@ export type Duration = 'infinite' | 'short' | 'long' | 'timed'
 export type Timbre = 'piano' | 'guitar' | 'off'
 
 /** Botões de ajuste que uma atividade mostra no canto. */
-export type Control = 'tempo' | 'bpm' | 'duration' | 'sound' | 'accidentals' | 'region' | 'map'
+export type Control = 'tempo' | 'bpm' | 'duration' | 'sound' | 'accidentals' | 'region' | 'map' | 'notes' | 'figures' | 'meter'
 
 /** Ajustes guardados por atividade. */
 export interface ActivityOptions {
@@ -29,6 +30,10 @@ export interface ActivityOptions {
   duration: Duration
   timbre: Timbre
   accidentals: boolean
+  /** Leitura: quais notas */
+  notes: NoteSet
+  /** Ritmo: pulsos por compasso */
+  meter: Meter
 }
 
 export interface ActivityDef {
@@ -40,11 +45,13 @@ export interface ActivityDef {
   content: Content
   controls: Control[]
   defaults: ActivityOptions
-  /** fora da lista por enquanto (código mantido para a futura trilha de iniciante) */
+  /** fora da lista (código mantido) */
   hidden?: boolean
+  /** cartões de conceito: aparecem na primeira vez; o "?" reabre */
+  cards?: string[]
 }
 
-const BASE: ActivityOptions = { tempo: 'free', bpm: 60, level: 1, duration: 'infinite', timbre: 'piano', accidentals: false }
+const BASE: ActivityOptions = { tempo: 'free', bpm: 60, level: 1, duration: 'infinite', timbre: 'piano', accidentals: false, notes: 'todas', meter: 4 }
 
 export const ACTIVITIES: ActivityDef[] = [
   {
@@ -54,8 +61,19 @@ export const ACTIVITIES: ActivityDef[] = [
     hint: 'leia a nota e responda',
     input: 'buttons',
     content: 'random',
-    controls: ['map', 'tempo', 'duration', 'sound', 'accidentals'],
+    controls: ['map', 'notes', 'tempo', 'duration', 'sound', 'accidentals'],
     defaults: BASE,
+  },
+  {
+    id: 'rhythm',
+    topic: 'pauta',
+    title: 'Ritmo',
+    hint: 'leia e bata o ritmo, no tempo',
+    input: 'buttons',
+    content: 'random',
+    controls: ['figures', 'meter', 'bpm'],
+    defaults: { ...BASE, level: 2 },
+    cards: ['pulso', 'pe'],
   },
   {
     id: 'repeat',
@@ -72,11 +90,12 @@ export const ACTIVITIES: ActivityDef[] = [
     id: 'scale',
     topic: 'violao',
     title: 'Escala',
-    hint: 'escala das notas naturais',
+    hint: 'as naturais em ordem, subindo e descendo',
     input: 'mic',
     content: 'scale',
     controls: ['map', 'tempo'],
     defaults: BASE,
+    cards: ['escalaViolao'],
   },
   {
     id: 'notes',
@@ -108,7 +127,7 @@ export function isActivityId(s: string | undefined): s is ActivityId {
   return ACTIVITIES.some((a) => a.id === s)
 }
 
-export const TOPIC_TITLE: Record<Topic, string> = { pauta: 'Pauta', violao: 'Violão' }
+export const TOPIC_TITLE: Record<Topic, string> = { teoria: 'Teoria musical', pauta: 'Pauta', violao: 'Violão' }
 
 /** Configuração efetiva de uma sessão (o que o controlador lê). */
 export interface ExerciseConfig {
@@ -123,6 +142,16 @@ export interface ExerciseConfig {
   scale: ScaleId
   accidentals: boolean
   timbre: Timbre
+  /** Leitura: quais notas (sem isso, as da região do violão) */
+  notes?: NoteSet
+  /** lições: figuras do sorteio no metrônomo (no lugar do nível) */
+  figures?: CellId[]
+  /** lições: quantos compassos */
+  bars?: number
+  /** lições: só estas notas (ids escritos) */
+  pool?: string[]
+  /** Ritmo: pulsos por compasso */
+  meter?: Meter
 }
 
 export function buildConfig(id: ActivityId, saved: Partial<ActivityOptions> | undefined, scale: ScaleId): ExerciseConfig {
@@ -142,6 +171,8 @@ export function buildConfig(id: ActivityId, saved: Partial<ActivityOptions> | un
     scale: def.controls.includes('region') ? scale : 'solta',
     accidentals: def.controls.includes('accidentals') && o.accidentals,
     timbre: def.input === 'buttons' ? o.timbre : 'off',
+    notes: def.controls.includes('notes') ? o.notes : undefined,
+    meter: def.controls.includes('meter') ? o.meter : undefined,
   }
 }
 

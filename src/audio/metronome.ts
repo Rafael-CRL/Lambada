@@ -16,7 +16,7 @@ export class Metronome {
 
   constructor(
     readonly bpm: number,
-    readonly beatsPerBar = BPM.beatsPerBar,
+    readonly beatsPerBar: number = BPM.beatsPerBar,
     volume = 0.6,
   ) {
     const ctx = audioContext()

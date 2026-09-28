@@ -1,7 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { navigate } from '../app/router'
-import { db, type Settings } from '../db/db'
+import { db, loadTrail, type Settings, type TrailProgress as Trail } from '../db/db'
+import { topicUnits } from '../lessons/curriculum'
+import { unitDone } from './ActivityList'
+import { TOPIC_TITLE } from '../exercises/types'
 import { positionKey } from '../domain/fretboard'
 import { namePt, namePtOctave } from '../domain/notes'
 import type { StudyItem } from '../domain/scales'
@@ -116,6 +119,8 @@ export function Progress({ settings }: { settings: Settings }) {
         />
       </div>
 
+      <TrailProgress />
+
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-medium text-accent">na pauta</h2>
@@ -130,7 +135,14 @@ export function Progress({ settings }: { settings: Settings }) {
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-accent">no braço</h2>
         <div className="rounded-xl bg-surface/60 p-4">
-          {snap && <Fretboard className="mx-auto w-full max-w-md" toFret={5} markers={uniqueMarkers} ariaLabel="Acerto por posição no braço" />}
+          {snap && (
+            <Fretboard
+              className="mx-auto w-full max-w-md"
+              toFret={Math.max(5, ...uniqueMarkers.map((m) => m.position.fret))}
+              markers={uniqueMarkers}
+              ariaLabel="Acerto por posição no braço"
+            />
+          )}
         </div>
       </section>
 
@@ -180,6 +192,45 @@ export function Progress({ settings }: { settings: Settings }) {
         )}
       </section>
     </div>
+  )
+}
+
+/** Trilhas: lições feitas por unidade (✓ = unidade feita). */
+function TrailProgress() {
+  const trail = useLiveQuery(loadTrail, [], {} as Trail)
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-medium text-accent">trilhas</h2>
+      {(['teoria', 'violao'] as const).map((topic) => (
+        <div key={topic} className="flex flex-col gap-1.5">
+          <span className="text-xs text-sub">{TOPIC_TITLE[topic]}</span>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {topicUnits(topic).map((u) => {
+              const done = u.lessons.filter((l) => trail[l.id]?.done).length
+              return (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => navigate({ name: 'topic', topic })}
+                  className="flex items-center gap-3 rounded-lg bg-surface/60 px-3 py-2 text-left transition-colors duration-150 hover:bg-surface"
+                >
+                  <span className="flex-1 truncate text-sm">
+                    {unitDone(u, trail) && <span className="text-ok">✓ </span>}
+                    {u.title}
+                  </span>
+                  <span className="h-1 w-16 overflow-hidden rounded-full bg-surface-2">
+                    <span className="block h-full rounded-full bg-accent" style={{ width: `${(done / u.lessons.length) * 100}%` }} />
+                  </span>
+                  <span className="tabular w-8 text-right font-mono text-xs text-sub">
+                    {done}/{u.lessons.length}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </section>
   )
 }
 

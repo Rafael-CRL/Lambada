@@ -10,11 +10,12 @@ vi.stubGlobal('requestAnimationFrame', () => 0)
 vi.stubGlobal('cancelAnimationFrame', () => {})
 
 const { LessonController } = await import('./controller')
-const { lesson } = await import('./lessons')
-const { noteId } = await import('../domain/notes')
+const { lesson, reviewFor } = await import('./curriculum')
+const { noteId, midiOf } = await import('../domain/notes')
 type Note = Parameters<typeof noteId>[0]
 type Card = { title: string } | null
 type Result = { correct: number; attempts: number; meanTime?: number }
+type NotesBody = Extract<ReturnType<typeof lesson>['segments'][number], { kind: 'notes' }>
 
 class FakeNote {
   state: string | null = null
@@ -31,13 +32,17 @@ class FakeNote {
   remove() {}
 }
 
-function setup(id: Parameters<typeof lesson>[0]) {
+function setup(id: string, mic = false) {
+  const def = lesson(id)
+  const body = def.segments.find((s): s is NotesBody => s.kind === 'notes')!
   const notes: FakeNote[] = []
   const shown: [number, number | null][] = []
+  const events: { type: 'note'; midi: number; onsetTime: number }[] = []
   let card: Card = null
+  let fret: unknown = null
   let result: Result | null = null
   const c = new LessonController({
-    lesson: lesson(id),
+    lesson: { body, challenge: def.challenge, review: reviewFor(def, body) },
     stage: {
       width: 400,
       hitNoteX: 100,
@@ -52,6 +57,8 @@ function setup(id: Parameters<typeof lesson>[0]) {
     setHud: () => {},
     setCard: (k) => (card = k),
     finish: (r) => (result = r),
+    mic: mic ? { poll: () => events.splice(0) as never } : null,
+    setFret: (f) => (fret = f),
     rng: () => 0.3,
   })
   c.start()
@@ -61,8 +68,13 @@ function setup(id: Parameters<typeof lesson>[0]) {
     c.update(now, s)
   }
   // um quadro antes de cada resposta, como no app
-  const right = () => (tick(0.02), c.answerButton({ letter: head().letter, acc: 0 }, 0))
+  const right = () => (tick(0.02), c.answerButton({ letter: head().letter, acc: head().acc }, 0))
   const wrong = () => (tick(0.02), c.answerButton({ letter: head().letter === 'C' ? 'D' : 'C', acc: 0 }, 0))
+  /** toca uma nota no violão (MIDI escrito) e roda um quadro */
+  const play = (writtenMidi: number) => {
+    events.push({ type: 'note', midi: writtenMidi - 12, onsetTime: now })
+    ;(c as unknown as { frame(p: number): void }).frame(0)
+  }
   /** responde certo até o fim (fechando os cartões) */
   const finishAll = () => {
     for (let guard = 0; c.target && guard < 300; guard++) {
@@ -71,13 +83,13 @@ function setup(id: Parameters<typeof lesson>[0]) {
     }
     tick(1)
   }
-  return { c, notes, shown, head, right, wrong, tick, finishAll, card: () => card, result: () => result }
+  return { c, notes, shown, head, right, wrong, play, tick, finishAll, card: () => card, fret: () => fret, result: () => result }
 }
 
-describe('lição', () => {
+describe('lição de notas', () => {
   test('cartão entre as partes: a tecla só fecha o cartão', () => {
-    const t = setup('linhas-1')
-    for (let i = 0; i < 2 * LESSON.introRepeat; i++) expect(t.right()).toBe('correct')
+    const t = setup('linhas-2')
+    expect(t.right()).toBe('correct')
     expect(t.card()?.title).toBe('agora em ordem')
     const answered = t.c.answered
     expect(t.right()).toBeNull()
@@ -87,7 +99,7 @@ describe('lição', () => {
   })
 
   test('erro mostra o nome, espera e segue para a próxima', () => {
-    const t = setup('linhas-4')
+    const t = setup('linhas-3')
     const n = t.notes.find((x) => x.note === t.head())!
     expect(t.wrong()).toBe('wrong')
     expect(n.state).toBe('err')
@@ -100,9 +112,8 @@ describe('lição', () => {
   })
 
   test('no sorteio, a nota errada volta depois, com a cola acesa só nela', () => {
-    const t = setup('linhas-4')
-    // passa o padrão, fecha o cartão e erra a primeira do sorteio
-    while (!t.card()) t.right()
+    const t = setup('linhas-3')
+    while (t.card()?.title !== 'agora sozinho') t.right()
     t.right()
     const total = t.c.total
     const missed = t.head()
@@ -119,7 +130,7 @@ describe('lição', () => {
     const t = setup('linhas-1')
     t.finishAll()
     const r = t.result()!
-    expect(r.attempts).toBe(t.c.total - 2 * LESSON.introRepeat)
+    expect(r.attempts).toBe(t.c.total - 2)
     expect(r.correct).toBe(r.attempts)
     expect(r.meanTime).toBeUndefined()
   })
@@ -130,7 +141,6 @@ describe('lição', () => {
     t.finishAll()
     const r = t.result()!
     expect(r.attempts).toBe(LESSON.challengeNotes)
-    // cada resposta veio ~0,5 s depois da anterior
     expect(r.meanTime).toBeGreaterThan(0.4)
     expect(r.meanTime).toBeLessThan(0.6)
   })
@@ -141,8 +151,24 @@ describe('lição', () => {
     const before = t.c.total
     t.c.more()
     expect(t.c.total).toBe(before + LESSON.moreNotes)
-    expect(t.c.target).not.toBeNull()
     t.finishAll()
-    expect(t.result()!.attempts).toBe(t.c.total - 2 * LESSON.introRepeat)
+    expect(t.result()!.attempts).toBe(t.c.total - 2)
+  })
+
+  test('violão: o microfone responde; na apresentação o braço mostra onde fica', () => {
+    const t = setup('posicao-1', true)
+    t.tick(0.02)
+    expect(t.fret()).toMatchObject({ target: { string: 1, fret: 0 } })
+    t.play(midiOf(t.head()))
+    expect(t.c.answered).toBe(1)
+    // oitava errada: mostra o braço com a tocada e espera mais que nos botões
+    t.tick(0.02)
+    t.play(midiOf(t.head()) - 12)
+    expect(t.notes.some((n) => n.state === 'oct')).toBe(true)
+    expect(t.fret()).toMatchObject({ played: expect.anything() })
+    t.tick(LESSON.revealTime + 0.05)
+    expect(t.c.answered).toBe(1)
+    t.tick(LESSON.revealTimeMic)
+    expect(t.c.answered).toBe(2)
   })
 })

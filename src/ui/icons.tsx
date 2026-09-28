@@ -117,3 +117,26 @@ export const IconStaffMap = (p: P) => (
     <circle cx="16" cy="8" r="1.8" fill="currentColor" stroke="none" />
   </Icon>
 )
+export const IconLines = (p: P) => (
+  <Icon {...p}>
+    <path d="M3 6h18M3 10h18M3 14h18M3 18h18" strokeWidth={1.4} opacity={0.55} />
+    <path d="M3 10h18" strokeWidth={2.2} />
+  </Icon>
+)
+export const IconHelp = (p: P) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8M12 17.2v.1" />
+  </Icon>
+)
+export const IconBook = (p: P) => (
+  <Icon {...p}>
+    <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z" />
+  </Icon>
+)
+export const IconNote = (p: P) => (
+  <Icon {...p}>
+    <ellipse cx="9" cy="17" rx="3.4" ry="2.5" transform="rotate(-20 9 17)" fill="currentColor" stroke="none" />
+    <path d="M12.1 16V4.5" />
+  </Icon>
+)

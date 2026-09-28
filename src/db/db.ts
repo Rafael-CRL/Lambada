@@ -2,7 +2,6 @@ import Dexie, { type EntityTable } from 'dexie'
 import type { InputKind, ItemStats, UnlockState } from '../engine/adaptive'
 import type { ScaleId } from '../domain/scales'
 import { isActivityId, type ActivityId, type ActivityOptions, type ExerciseConfig } from '../exercises/types'
-import type { LessonId } from '../lessons/lessons'
 
 export type Theme = 'dark' | 'light'
 
@@ -14,6 +13,8 @@ export interface Settings {
   toleranceMs: number
   /** compensação manual de latência do microfone (ms) */
   latencyMs: number
+  /** compensação do atraso ao bater o ritmo (ms): positivo = as batidas saem atrasadas */
+  tapLatencyMs: number
   audioDeviceId: string
   theme: Theme
   /** ajustes guardados por atividade */
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   scale: 'solta',
   toleranceMs: 120,
   latencyMs: 0,
+  tapLatencyMs: 0,
   audioDeviceId: '',
   theme: 'dark',
   activities: {},
@@ -121,13 +123,23 @@ export function unlockKey(input: InputKind, scale: ScaleId): string {
   return `${input}:${scale}`
 }
 
-export async function getLastActivity(): Promise<ActivityId | null> {
+/** Onde o usuário parou: uma atividade ou uma lição de trilha. */
+export type LastPlace = { kind: 'activity'; id: ActivityId } | { kind: 'lesson'; id: string }
+
+export async function getLastPlace(): Promise<LastPlace | null> {
   const rec = await db.meta.get('lastActivity')
-  return isActivityId(rec?.value as string) ? (rec!.value as ActivityId) : null
+  const v = rec?.value
+  if (typeof v !== 'string') return null
+  if (v.startsWith('lesson:')) return { kind: 'lesson', id: v.slice('lesson:'.length) }
+  return isActivityId(v) ? { kind: 'activity', id: v } : null
 }
 
 export async function setLastActivity(id: ActivityId): Promise<void> {
   await db.meta.put({ key: 'lastActivity', value: id })
+}
+
+export async function setLastLesson(id: string): Promise<void> {
+  await db.meta.put({ key: 'lastActivity', value: `lesson:${id}` })
 }
 
 /** Salva ajustes de uma atividade (mesclando com os anteriores). */
@@ -145,7 +157,8 @@ export interface LessonProgress {
   bestTime?: number
 }
 
-export type TrailProgress = Partial<Record<LessonId, LessonProgress>>
+/** progresso por id de lição */
+export type TrailProgress = Partial<Record<string, LessonProgress>>
 
 export async function loadTrail(): Promise<TrailProgress> {
   const rec = await db.meta.get('trail')
@@ -153,7 +166,7 @@ export async function loadTrail(): Promise<TrailProgress> {
 }
 
 /** Guarda o resultado de uma lição (o melhor acerto e o melhor tempo ficam). */
-export async function saveLessonResult(id: LessonId, accuracy: number, passed: boolean, meanTime?: number): Promise<LessonProgress> {
+export async function saveLessonResult(id: string, accuracy: number, passed: boolean, meanTime?: number): Promise<LessonProgress> {
   const trail = await loadTrail()
   const prev = trail[id]
   const times = [prev?.bestTime, meanTime].filter((t): t is number => t !== undefined)
@@ -165,4 +178,16 @@ export async function saveLessonResult(id: LessonId, accuracy: number, passed: b
   }
   await db.meta.put({ key: 'trail', value: { ...trail, [id]: next } })
   return next
+}
+
+/** Cartões de conceito de uma atividade já vistos (aparecem sozinhos só na primeira vez). */
+export async function cardsSeen(key: string): Promise<boolean> {
+  const rec = await db.meta.get('seenCards')
+  return ((rec?.value as string[] | undefined) ?? []).includes(key)
+}
+
+export async function markCardsSeen(key: string): Promise<void> {
+  const rec = await db.meta.get('seenCards')
+  const seen = (rec?.value as string[] | undefined) ?? []
+  if (!seen.includes(key)) await db.meta.put({ key: 'seenCards', value: [...seen, key] })
 }

@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react'
 import { isActivityId, type ActivityId, type Topic } from '../exercises/types'
-import { isLessonId, type LessonId } from '../lessons/lessons'
+import { isLessonId } from '../lessons/curriculum'
 
 export type Route =
   | { name: 'home' }
   | { name: 'topic'; topic: Topic }
   | { name: 'play'; activity: ActivityId; run: number }
-  | { name: 'lesson'; lesson: LessonId; run: number }
+  | { name: 'lesson'; lesson: string; run: number }
   | { name: 'summary'; id: number }
   | { name: 'progress' }
   | { name: 'settings' }
@@ -26,6 +26,7 @@ export function parseHash(hash: string): Route {
       return { name: 'progress' }
     case 'settings':
       return { name: 'settings' }
+    case 'teoria':
     case 'pauta':
     case 'violao':
       return { name: 'topic', topic: parts[0] }

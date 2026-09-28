@@ -6,6 +6,7 @@ import {
   midiOf,
   noteId,
   parseNote,
+  soundingFromWritten,
   writtenFromSounding,
   type Accidental,
   type Note,
@@ -194,4 +195,43 @@ export function displayPosition(scale: ScaleId, midi: number, accidentals: boole
 export function writtenRange(scale: ScaleId): [Note, Note] {
   const ns = naturalsOf(scale)
   return [writtenFromSounding(defaultSpelling(ns[0].midi)), writtenFromSounding(defaultSpelling(ns[ns.length - 1].midi))]
+}
+
+/** Conjuntos de notas da Leitura (só a pauta, sem depender do braço). */
+export type NoteSet = 'linhas' | 'espacos' | 'suplementares' | 'todas'
+
+export const NOTE_SET_LABELS: Record<NoteSet, string> = {
+  linhas: 'Linhas',
+  espacos: 'Espaços',
+  suplementares: 'Suplementares',
+  todas: 'Todas',
+}
+
+const ALL_WRITTEN = ['E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5', 'B5', 'C6', 'D6', 'E6']
+
+export const NOTE_SETS: Record<NoteSet, string[]> = {
+  linhas: ['E4', 'G4', 'B4', 'D5', 'F5'],
+  espacos: ['F4', 'A4', 'C5', 'E5'],
+  suplementares: ['E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'G5', 'A5', 'B5', 'C6', 'D6', 'E6'],
+  todas: ALL_WRITTEN,
+}
+
+/**
+ * Itens de leitura (botões) a partir de notas escritas quaisquer. Com ♯♭,
+ * cada natural ganha o sustenido e o bemol da mesma letra. A posição no
+ * braço é a mais perto da 1ª posição (só para mostrar, se preciso).
+ */
+export function readingItems(ids: string[], accidentals: boolean): StudyItem[] {
+  const out: StudyItem[] = []
+  for (const id of ids) {
+    const natural = parseNote(id)
+    const spellings: Note[] = [natural]
+    if (accidentals) for (const acc of [1, -1] as Accidental[]) if (isAllowedSpelling(natural.letter, acc)) spellings.push({ ...natural, acc })
+    for (const written of spellings) {
+      const sounding = soundingFromWritten(written)
+      const midi = midiOf(sounding)
+      out.push({ id: noteId(written), written, sounding, midi, position: displayPosition('solta', midi, true) ?? { string: 1, fret: 0 }, natural: written.acc === 0 })
+    }
+  }
+  return out
 }

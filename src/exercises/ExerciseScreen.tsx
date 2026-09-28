@@ -4,15 +4,18 @@ import { ensureAudioRunning, isAudioRunning } from '../audio/clock'
 import { Microphone } from '../audio/microphone'
 import { db, loadSettings, recordId, saveActivityOptions, saveSettings, type SessionRecord, type Settings } from '../db/db'
 import { StudySession } from '../engine/session'
-import { Fretboard } from '../staff/Fretboard'
 import { Button, cx, ProgressBar } from '../ui/controls'
-import { IconPause, IconPlay, IconRedo, IconX } from '../ui/icons'
+import { IconHelp, IconPause, IconPlay, IconRedo, IconX } from '../ui/icons'
+import { ConceptCards } from '../lessons/ConceptCards'
+import { useFirstCards } from '../lessons/useFirstCards'
 import { ControlsDock, type OptionChange } from './ControlsDock'
 import { EMPTY_HUD, type Hud } from './controller'
 import { MicMeter } from './MicMeter'
+import { Countdown, FeedbackLine, FretHint } from './parts'
 import { NoteButtons } from './NoteButtons'
 import { ScoreController } from './score'
-import { writtenRange } from '../domain/scales'
+import { NOTE_SETS, writtenRange } from '../domain/scales'
+import { parseNote } from '../domain/notes'
 import { staffStep } from '../domain/staff'
 import { NoteMap, type MapReach } from '../staff/NoteMap'
 import { StaffStage } from './stage'
@@ -37,10 +40,10 @@ async function saveResult(session: StudySession, completed: boolean, extra?: Par
 }
 
 /** Ajustes que mudam a partitura: reiniciam a sessão. Os demais valem na hora. */
-const RESTARTS: (keyof OptionChange)[] = ['tempo', 'level', 'duration', 'scale']
+const RESTARTS: (keyof OptionChange)[] = ['tempo', 'level', 'duration', 'scale', 'notes']
 
 function pickOptions(c: ExerciseConfig) {
-  return { tempo: c.tempo, bpm: c.bpm, level: c.level, duration: c.duration, timbre: c.timbre, accidentals: c.accidentals }
+  return { tempo: c.tempo, bpm: c.bpm, level: c.level, duration: c.duration, timbre: c.timbre, accidentals: c.accidentals, notes: c.notes ?? 'todas' }
 }
 
 export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
@@ -64,12 +67,30 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
   const [mapReach, setMapReach] = useState<MapReach>(12)
   const toggleMap = useCallback(() => setMapOpen((v) => !v), [])
   const scale = config?.scale ?? 'solta'
-  // região praticada, derivada da escala (para apagar o resto na cola)
+  // região praticada: o conjunto de notas da Leitura, ou a região do violão (o resto fica apagado na cola)
+  const noteSet = config?.notes
   const region = useMemo<[number, number]>(() => {
+    if (noteSet) {
+      const steps = NOTE_SETS[noteSet].map((id) => staffStep(parseNote(id)))
+      return [Math.min(...steps), Math.max(...steps)]
+    }
     const [lo, hi] = writtenRange(scale)
     return [staffStep(lo), staffStep(hi)]
-  }, [scale])
+  }, [scale, noteSet])
   const leaving = useRef(false)
+  // cartões de conceito (Escala): sozinhos na primeira vez, depois pelo "?"
+  const [help, setHelp] = useFirstCards(activityId, def.cards)
+  const pausedByHelp = useRef(false)
+  useEffect(() => {
+    const c = ctrl.current
+    if (help && c && !c.paused) {
+      c.pause()
+      pausedByHelp.current = true
+    } else if (!help && pausedByHelp.current) {
+      pausedByHelp.current = false
+      c?.resume()
+    }
+  }, [help, phase])
 
   // ajustes salvos e microfone: uma vez por tela
   useEffect(() => {
@@ -207,7 +228,7 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dockOpen) return
+      if (dockOpen || help) return
       if (e.key === 'Escape') {
         e.preventDefault()
         if (phase === 'paused') void leave()
@@ -240,6 +261,17 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
           </span>
         )}
         {hud.progressText && <span className="tabular font-mono text-sm text-sub">{hud.progressText}</span>}
+        {def.cards && (
+          <button
+            type="button"
+            onClick={() => setHelp(true)}
+            aria-label="Rever a explicação"
+            title="Rever a explicação"
+            className="grid size-10 place-items-center rounded-lg text-lg text-sub hover:bg-surface hover:text-text"
+          >
+            <IconHelp />
+          </button>
+        )}
         <button
           type="button"
           onClick={restart}
@@ -289,58 +321,14 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
             aria-label="Pauta"
             role="img"
           />
-          {hud.countdown && (
-            <div className="pointer-events-none absolute inset-0 grid place-items-center">
-              <span key={hud.countdown} className="animate-pop font-mono text-7xl font-semibold text-accent/80">
-                {hud.countdown}
-              </span>
-            </div>
-          )}
-          <div className="flex min-h-16 flex-col items-center justify-start gap-0.5 text-center" aria-live="polite">
-            {fb && (fb.kind !== 'ok' || fb.text) && (
-              <div key={fb.key} className="animate-fade-in">
-                <div
-                  className={cx(
-                    'text-2xl font-semibold',
-                    fb.kind === 'ok' && 'text-ok',
-                    fb.kind === 'err' && 'text-err',
-                    fb.kind === 'oct' && 'text-oct',
-                    fb.kind === 'info' && 'text-sub',
-                  )}
-                >
-                  {fb.text}
-                </div>
-                {fb.detail && <div className="text-sm text-sub">{fb.detail}</div>}
-              </div>
-            )}
-          </div>
+          <Countdown value={hud.countdown} />
+          <FeedbackLine fb={fb} infoTone="sub" />
           {mapOpen && (
             <div className="mt-2 animate-fade-in">
               <NoteMap region={region} reach={mapReach} onReach={setMapReach} />
             </div>
           )}
-          {hud.fret && (
-            <div className="mx-auto mt-2 w-full max-w-sm animate-fade-in">
-              <Fretboard
-                toFret={Math.max(5, hud.fret.target.fret, hud.fret.played?.fret ?? 0)}
-                ariaLabel={`Nota certa ${hud.fret.targetName}; tocada ${hud.fret.playedName ?? ''}`}
-                markers={[
-                  ...(hud.fret.played ? [{ position: hud.fret.played, kind: 'played' as const }] : []),
-                  { position: hud.fret.target, kind: 'target' as const },
-                ]}
-              />
-              <div className="mt-1 flex justify-center gap-4 text-xs text-sub">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-ok" /> {hud.fret.targetName}
-                </span>
-                {hud.fret.playedName && (
-                  <span className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-full bg-err" /> tocada {hud.fret.playedName}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+          {hud.fret && <FretHint fret={hud.fret} />}
         </div>
 
         <footer className="mt-2 flex flex-col gap-3">
@@ -367,6 +355,8 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
           )}
         </footer>
       </div>
+
+      {help && def.cards && <ConceptCards ids={def.cards} onClose={() => setHelp(false)} />}
 
       {(phase === 'paused' || phase === 'needs-gesture' || phase === 'mic-error') && (
         <div className="fixed inset-0 z-20 grid animate-fade-in place-items-center bg-bg/85 p-6 backdrop-blur-sm">

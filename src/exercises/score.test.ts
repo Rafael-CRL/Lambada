@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import { BPM } from '../config'
+import { BPM, LESSON } from '../config'
 
 // relógio de áudio controlado pelo teste
 let now = 100
@@ -57,7 +57,9 @@ function fakeStage() {
       notes.push(n)
       return n
     },
+    shapes: 0,
     addShapes() {
+      this.shapes++
       return new FakeNote(null)
     },
   }
@@ -123,18 +125,28 @@ describe('pontuação do metrônomo', () => {
 })
 
 describe('tempo livre', () => {
-  test('a nota espera a resposta; erro não avança, acerto avança', async () => {
+  test('botões: errou, mostra a certa por um instante e segue', async () => {
     const { c, press, answerHead, tick } = await setup({})
     tick(1)
     const first = c.head!
     const wrong = first.item.written.letter === 'C' ? 'D' : 'C'
     expect(press(wrong)).toBe('wrong')
     expect(c.head).toBe(first)
-    expect(answerHead()).toBe('correct')
+    // durante a espera a resposta não conta
+    expect(answerHead()).toBeNull()
+    tick(LESSON.revealTime + 0.1)
     expect(c.head).not.toBe(first)
+    expect(answerHead()).toBe('correct')
   })
 
-  test('8 compassos = 32 notas em compassos de 4 semínimas, depois termina', async () => {
+  test('tempo livre: semibreves, sem barras de compasso', async () => {
+    const { c, tick, stage } = await setup({})
+    tick(1)
+    expect(c.events.every((e) => (e as unknown as { figure: string }).figure === 'whole')).toBe(true)
+    expect(stage.shapes).toBe(0)
+  })
+
+  test('32 notas ("8 compassos" no metrônomo), depois termina', async () => {
     const { c, answerHead, tick, finished, hud } = await setup({ duration: 'short' })
     for (let i = 0; i < 32; i++) {
       tick(0.3)
@@ -142,7 +154,7 @@ describe('tempo livre', () => {
     }
     tick(1)
     expect(finished()).not.toBeNull()
-    expect(hud.progressText).toBe('8/8')
+    expect(hud.progressText).toBe('32/32')
     expect(c.events.every((e) => !e.rest)).toBe(true)
   })
 

@@ -1,16 +1,18 @@
+import type { Microphone } from '../audio/microphone'
 import { playNote } from '../audio/synth'
 import { LESSON, READING } from '../config'
-import { matchButton, namePt, noteId, type Note } from '../domain/notes'
+import { defaultSpelling, matchPitch, midiOf, namePt, namePtOctave, noteId, spellingId, writtenFromSounding, type Note } from '../domain/notes'
+import { displayPosition, positionOfMidiInScale } from '../domain/scales'
 import { staffStep } from '../domain/staff'
 import type { AttemptResult } from '../engine/adaptive'
-import { percent, pressedSoundingMidi, type Feedback, type Hud, type Spelling } from '../exercises/controller'
+import { octaveHint, percent, pressedSoundingMidi, type Feedback, type FretFeedback, type Hud, type Spelling } from '../exercises/controller'
 import { ExerciseClock, FrameLoop, type StaffGuide, type StaffStage, type StageNote } from '../exercises/stage'
 import type { Timbre } from '../exercises/types'
 import { S } from '../staff/geometry'
-import { lessonSteps, mixSteps, placeName, type LessonCard, type LessonDef, type LessonResult, type LessonStep } from './lessons'
+import { lessonSteps, mixSteps, placeName, type LessonCard, type LessonResult, type LessonStep, type NotesLesson } from './lessons'
 
 export interface LessonDeps {
-  lesson: LessonDef
+  lesson: NotesLesson
   stage: Pick<StaffStage, 'width' | 'hitNoteX' | 'addNote'>
   guide: Pick<StaffGuide, 'show'> | null
   /** lido a cada resposta (o som muda sem reiniciar) */
@@ -19,6 +21,10 @@ export interface LessonDeps {
   /** cartão entre as partes (null = some) */
   setCard: (card: LessonCard | null) => void
   finish: (r: LessonResult) => void
+  /** violão: o microfone responde */
+  mic?: Pick<Microphone, 'poll'> | null
+  /** violão: onde fica a nota no braço (null = some) */
+  setFret?: (f: FretFeedback | null) => void
   rng?: () => number
 }
 
@@ -32,10 +38,11 @@ interface Slot extends LessonStep {
 }
 
 /**
- * Uma lição da trilha: semibreves em fila, sem compasso. A nota na linha
- * espera a resposta; errou, mostra a certa (nome e lugar), espera um pouco e
- * segue. No sorteio, a nota errada volta algumas notas depois, com a cola
- * acesa só para ela. Entre as partes, um cartão espera qualquer tecla.
+ * Uma lição de notas: semibreves em fila, sem compasso. A nota na linha
+ * espera a resposta (botão, linha/espaço ou o violão); errou, mostra a certa
+ * (nome e lugar), espera um pouco e segue. No sorteio, a nota errada volta
+ * algumas notas depois, com a cola acesa só para ela. Entre as partes, um
+ * cartão espera qualquer tecla.
  */
 export class LessonController {
   private clock = new ExerciseClock()
@@ -56,9 +63,12 @@ export class LessonController {
   private feedbackKey = 0
   private started = false
   private finished = false
+  private paused = false
   private readonly gap = LESSON.gap * S
+  private readonly mic: boolean
 
   constructor(private d: LessonDeps) {
+    this.mic = d.lesson.body.input === 'mic'
     this.slots = lessonSteps(d.lesson, d.rng).map((s) => ({ ...s, x: Infinity, spawned: false, gone: false }))
   }
 
@@ -89,20 +99,48 @@ export class LessonController {
     return this.current?.note ?? null
   }
 
-  answerButton(spelling: Spelling, perfTime: number): AttemptResult | null {
-    if (!this.started || this.finished || this.holdUntil !== null) return null
-    // com o cartão aberto, a tecla só fecha o cartão
+  /** "?" aberto: a lição espera (não aceita respostas nem conta o tempo). */
+  pause() {
+    this.paused = true
+  }
+
+  resume() {
+    if (!this.paused) return
+    this.paused = false
+    this.readyAt = this.clock.now()
+  }
+
+  /** Pode responder agora? Com o cartão aberto, a resposta só fecha o cartão. */
+  private ready(): Slot | null {
+    if (!this.started || this.finished || this.paused || this.holdUntil !== null) return null
     if (this.card) {
       this.dismissCard()
       return null
     }
     const s = this.current
-    if (!s?.spawned) return null
-    const now = this.clock.now(perfTime)
-    if (s.timed) this.times.push(Math.max(0, now - this.readyAt))
+    return s?.spawned ? s : null
+  }
+
+  /** Botão de nota (nome). */
+  answerButton(spelling: Spelling, perfTime: number): AttemptResult | null {
+    const s = this.ready()
+    if (!s) return null
     const timbre = this.d.timbre()
     if (timbre !== 'off') playNote(pressedSoundingMidi(spelling, s.note), timbre)
-    const ok = matchButton(s.note, spelling)
+    return this.judge(s, spellingId(spelling) === spellingId(s.note) ? 'correct' : 'wrong', this.clock.now(perfTime))
+  }
+
+  /** Nota tocada no violão (MIDI escrito). */
+  private answerMic(writtenMidi: number, time: number) {
+    const s = this.ready()
+    if (!s) return
+    const result = matchPitch(s.note, writtenMidi)
+    this.judge(s, result, time, writtenMidi)
+  }
+
+  private judge(s: Slot, result: AttemptResult, now: number, playedWrittenMidi?: number): AttemptResult {
+    const ok = result === 'correct'
+    if (s.timed) this.times.push(Math.max(0, now - this.readyAt))
     if (!s.name) {
       this.attempts++
       if (ok) this.correct++
@@ -110,18 +148,41 @@ export class LessonController {
     if (ok) {
       s.sn?.setState('ok')
       this.feedback('ok', '')
+      this.d.setFret?.(null)
       this.advance(now)
     } else {
       const step = staffStep(s.note)
-      s.sn?.setState('err')
-      s.sn?.setLabel(namePt(s.note), 1)
+      const label = namePt(s.note)
+      s.sn?.setState(result === 'wrong-octave' ? 'oct' : 'err')
+      s.sn?.setLabel(label, 1)
       this.d.guide?.show(s.guide, step)
-      this.feedback('err', namePt(s.note), placeName(step))
+      if (playedWrittenMidi !== undefined) this.micMistake(s, playedWrittenMidi, result)
+      else this.feedback('err', label, placeName(step))
       if (s.part === 'mix') this.retry(s)
-      this.holdUntil = now + LESSON.revealTime
+      this.holdUntil = now + (this.mic ? LESSON.revealTimeMic : LESSON.revealTime)
     }
     this.hud()
-    return ok ? 'correct' : 'wrong'
+    return result
+  }
+
+  /** Violão: o que foi ouvido e onde fica a nota certa. */
+  private micMistake(s: Slot, writtenMidi: number, result: AttemptResult) {
+    const heard = namePtOctave(writtenFromSounding(defaultSpelling(writtenMidi - 12)))
+    this.showFret(s.note, writtenMidi)
+    if (result === 'wrong-octave') this.feedback('oct', 'nota certa, oitava errada', `ouvi ${heard} · ${octaveHint(midiOf(s.note), writtenMidi)}`)
+    else this.feedback('err', namePtOctave(s.note), `ouvi ${heard}`)
+  }
+
+  private showFret(target: Note, playedWrittenMidi?: number) {
+    if (!this.d.setFret) return
+    const pos = positionOfMidiInScale('solta', midiOf(target) - 12, true)
+    if (!pos) return
+    this.d.setFret({
+      target: pos,
+      played: playedWrittenMidi === undefined ? null : displayPosition('solta', playedWrittenMidi - 12, true),
+      targetName: namePtOctave(target),
+      playedName: playedWrittenMidi === undefined ? null : namePtOctave(writtenFromSounding(defaultSpelling(playedWrittenMidi - 12))),
+    })
   }
 
   /** A nota errada volta `retryAfter` notas depois, sem vizinha igual. */
@@ -130,7 +191,7 @@ export class LessonController {
     const same = (i: number) => this.slots[i] && noteId(this.slots[i].note) === noteId(s.note)
     while (at <= this.slots.length && (same(at - 1) || same(at))) at++
     at = Math.min(at, this.slots.length)
-    this.slots.splice(at, 0, { note: s.note, part: 'mix', name: false, guide: 0, cue: true, timed: s.timed, x: Infinity, spawned: false, gone: false })
+    this.slots.splice(at, 0, { note: s.note, natural: s.natural, part: 'mix', name: false, guide: 0, cue: true, timed: s.timed, x: Infinity, spawned: false, gone: false })
   }
 
   private advance(now: number) {
@@ -143,6 +204,7 @@ export class LessonController {
   /** A nota chegou na linha: primeiro o cartão (se houver), depois as ajudas dela. */
   private arrive() {
     const s = this.current
+    this.d.setFret?.(null)
     if (!s) return this.d.guide?.show(0, null)
     if (s.card && !s.carded) {
       s.carded = true
@@ -154,6 +216,8 @@ export class LessonController {
     }
     this.readyAt = this.clock.now()
     this.d.guide?.show(s.guide, s.name || s.cue ? staffStep(s.note) : null)
+    // violão: na apresentação e na volta de um erro, o braço mostra onde fica
+    if (this.mic && (s.part === 'intro' || s.cue)) this.showFret(s.note)
     if (s.isNew) this.feedback('info', namePt(s.note), placeName(staffStep(s.note)))
   }
 
@@ -166,11 +230,10 @@ export class LessonController {
   }
 
   /** "Treinar mais": mais notas sorteadas, sem ajuda, na mesma lição. */
-  more(count = LESSON.moreNotes) {
+  more(count: number = LESSON.moreNotes) {
     if (!this.finished || this.head < this.slots.length) return
     const before = this.slots.map((s) => noteId(s.note))
-    for (const step of mixSteps(this.d.lesson, count, this.d.rng, before))
-      this.slots.push({ ...step, x: Infinity, spawned: false, gone: false })
+    for (const step of mixSteps(this.d.lesson, count, this.d.rng, before)) this.slots.push({ ...step, x: Infinity, spawned: false, gone: false })
     this.finished = false
     this.endAt = null
     this.lastFrame = null
@@ -183,6 +246,10 @@ export class LessonController {
     const now = this.clock.now(perf)
     const dt = this.lastFrame === null ? 0 : Math.min(0.1, Math.max(0, now - this.lastFrame))
     this.lastFrame = now
+    if (this.d.mic) {
+      const events = this.d.mic.poll()
+      if (!this.finished && !this.paused) for (const e of events) if (e.type === 'note') this.answerMic(e.midi + 12, this.clock.fromApp(e.onsetTime))
+    }
     if (!this.finished) this.update(now, dt)
   }
 
@@ -213,13 +280,15 @@ export class LessonController {
   private spawn(e: Slot, x: number) {
     e.spawned = true
     e.x = x
-    e.sn = this.d.stage.addNote(e.note, x, e.name ? { text: namePt(e.note), opacity: 1 } : undefined, { figure: 'whole' })
+    const label = e.name ? { text: namePt(e.note), opacity: 1 } : undefined
+    e.sn = this.d.stage.addNote(e.note, x, label, { figure: 'whole', natural: e.natural })
     if (e.cue) e.sn.g.classList.add('is-retry')
   }
 
   private end() {
     this.finished = true
     this.loop.stop()
+    this.d.setFret?.(null)
     const meanTime = this.times.length ? this.times.reduce((a, b) => a + b, 0) / this.times.length : undefined
     this.d.finish({ correct: this.correct, attempts: this.attempts, meanTime })
   }

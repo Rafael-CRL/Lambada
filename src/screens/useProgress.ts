@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Settings } from '../db/db'
-import { scaleItems, unlockOrder, type StudyItem } from '../domain/scales'
+import { NOTE_SETS, readingItems, scaleItems, unlockOrder, type StudyItem } from '../domain/scales'
 import { isMastered, type InputKind, type ItemStats } from '../engine/adaptive'
 
 export interface ProgressSnapshot {
@@ -21,7 +21,8 @@ export function useProgressSnapshot(settings: Settings, input: InputKind): Progr
   // região fixa enquanto não houver o ajuste (ver buildConfig)
   const scale = 'solta' as const
   return useLiveQuery(async () => {
-    const items = unlockOrder(scaleItems(scale, accidentals))
+    // Pauta: todas as notas da Leitura (Mi3 a Mi6); violão: a região
+    const items = input === 'buttons' ? readingItems(NOTE_SETS.todas, accidentals) : unlockOrder(scaleItems(scale, accidentals))
     const rows = await db.itemStats.where('input').equals(input).toArray()
     const stats = new Map(rows.map((r) => [r.noteId, r]))
     // desbloqueio desligado: toda a região está ativa

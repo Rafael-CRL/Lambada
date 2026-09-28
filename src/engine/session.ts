@@ -1,8 +1,18 @@
 import { db, type NoteTally, type SessionRecord } from '../db/db'
-import { scaleItems, unlockOrder, type ScaleId, type StudyItem } from '../domain/scales'
+import { NOTE_SETS, readingItems, scaleItems, unlockOrder, type ScaleId, type StudyItem } from '../domain/scales'
 import { inputOf, modeKey, type ExerciseConfig } from '../exercises/types'
 import { emptyStats, median, pushAttempt, type AttemptResult, type InputKind, type ItemStats } from './adaptive'
 import { NotePicker } from './picker'
+
+/**
+ * Notas da sessão: na Leitura, o conjunto escolhido (ou o das lições); no
+ * violão, as da região, filtradas pelas da lição quando houver.
+ */
+export function sessionItems(config: ExerciseConfig, scale: ScaleId, accidentals: boolean): StudyItem[] {
+  if (inputOf(config) === 'buttons' && (config.pool || config.notes)) return readingItems(config.pool ?? NOTE_SETS[config.notes!], accidentals)
+  const items = unlockOrder(scaleItems(scale, accidentals))
+  return config.pool ? items.filter((i) => config.pool!.includes(i.id)) : items
+}
 
 /**
  * Sessão de estudo: estado em memória do motor adaptativo para uma entrada e
@@ -26,7 +36,7 @@ export class StudySession {
     stats: Map<string, ItemStats>,
     rng: () => number,
   ) {
-    this.items = unlockOrder(scaleItems(scale, accidentals))
+    this.items = sessionItems(config, scale, accidentals)
     this.byId = new Map(this.items.map((i) => [i.id, i]))
     this.stats = stats
     // sem desbloqueio: todas as notas da região desde o início
@@ -44,7 +54,7 @@ export class StudySession {
   setAccidentals(on: boolean) {
     if (on === this.accidentals) return
     this.accidentals = on
-    this.items = unlockOrder(scaleItems(this.scale, on))
+    this.items = sessionItems(this.config, this.scale, on)
     for (const i of this.items) if (!this.byId.has(i.id)) this.byId.set(i.id, i)
     this.picker.setPool(this.items.map((i) => i.id))
   }

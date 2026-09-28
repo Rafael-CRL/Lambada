@@ -117,8 +117,28 @@ export const LESSON = {
   /** Desafio da etapa: notas e tempo médio máximo por nota (s) */
   challengeNotes: 20,
   challengeTime: 2,
+  /** no violão (achar a casa e tocar leva mais tempo) */
+  challengeTimeMic: 3,
+  /** com o microfone, a resposta certa fica à vista mais tempo (dá para ver o braço) */
+  revealTimeMic: 1.8,
   /** "treinar mais" no fim da lição */
   moreNotes: 10,
+} as const
+
+/** Lições e prática de ritmo. */
+export const RHYTHM = {
+  /** andamento das lições (a semínima dura 1 s) */
+  bpm: 60,
+  /** compassos de contagem antes de cada trecho */
+  countInBars: 1,
+  /** folga (s) entre o fim do trecho e o começo do próximo */
+  lead: 0.35,
+  /** tempo mostrando as marcas de acerto/erro (s) */
+  resultTime: 1.1,
+  /** o trecho errado volta tantos itens depois (uma vez) */
+  retryAfter: 2,
+  /** altura do tom das figuras (Hz) */
+  toneFreq: 440,
 } as const
 
 export const BPM = {

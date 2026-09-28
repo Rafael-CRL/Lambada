@@ -1,141 +1,184 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { navigate } from '../app/router'
 import { ensureAudioRunning, isAudioRunning } from '../audio/clock'
+import { Microphone } from '../audio/microphone'
 import { LESSON } from '../config'
-import { loadSettings, saveLessonResult } from '../db/db'
+import { loadSettings, saveLessonResult, type Settings } from '../db/db'
 import { EMPTY_HUD, type Hud } from '../exercises/controller'
-import { NoteButtons } from '../exercises/NoteButtons'
-import { StaffStage } from '../exercises/stage'
 import { startActivity, startLesson } from '../exercises/start'
 import type { Timbre } from '../exercises/types'
-import { CLEF_END } from '../staff/geometry'
 import { Button, cx, ProgressBar } from '../ui/controls'
-import { IconArrowRight, IconPlay, IconRedo, IconX } from '../ui/icons'
-import { LessonController } from './controller'
-import { parseNote } from '../domain/notes'
-import {
-  accuracyOf,
-  lesson,
-  lessonNotes,
-  nextLesson,
-  passes,
-  reviewNotes,
-  seconds,
-  stageLessons,
-  stageOf,
-  type LessonCard,
-  type LessonId,
-  type LessonResult,
-} from './lessons'
+import { IconArrowRight, IconHelp, IconPlay, IconRedo, IconX } from '../ui/icons'
+import { ConceptCards } from './ConceptCards'
+import { lesson, nextLesson, unitOf } from './curriculum'
+import { accuracyOf, challengeTime, passes, seconds, type LessonResult, type Segment } from './lessons'
+import { NotesSegment } from './NotesSegment'
+import { RhythmSegment } from './RhythmSegment'
+import { ScoreSegment } from './ScoreSegment'
+import type { SegmentHandle, SegmentProps } from './segments'
 
-type Phase = 'loading' | 'needs-gesture' | 'running' | 'done'
+type Phase = 'loading' | 'needs-gesture' | 'mic-error' | 'cards' | 'running' | 'between' | 'done'
 
-/** Cola entre a clave e a nota: linhas numa coluna, espaços na outra. */
-const GUIDE_X = { line: CLEF_END + 12, space: CLEF_END + 28 }
-/** as notas somem antes da cola (a partir daqui aparecem) */
-const FADE_FROM = CLEF_END + 36
-const HIT_X = CLEF_END + 70
+/** Cartão antes de um segmento que não é o primeiro (ex.: "no tempo" do violão). */
+function betweenCard(s: Segment): { title: string; detail?: string } {
+  if (s.kind === 'score' && s.content === 'repeat') return { title: 'No tempo', detail: 'toque cada nota junto com o metrônomo, uma por pulso' }
+  if (s.kind === 'score') return { title: 'No tempo', detail: 'leia e responda junto com o metrônomo' }
+  if (s.kind === 'rhythm') return { title: 'Ritmo' }
+  return { title: 'Agora as notas' }
+}
 
-export function LessonScreen({ lessonId }: { lessonId: LessonId }) {
+function combine(list: LessonResult[]): LessonResult {
+  const times = list.map((r) => r.meanTime).filter((t): t is number => t !== undefined)
+  return {
+    correct: list.reduce((s, r) => s + r.correct, 0),
+    attempts: list.reduce((s, r) => s + r.attempts, 0),
+    meanTime: times.length ? times.reduce((a, b) => a + b, 0) / times.length : undefined,
+  }
+}
+
+/** O que falta para marcar como feita (ou que já está). */
+function status(challenge: boolean | undefined, limit: number | null, r: LessonResult, passed: boolean): string {
+  if (passed) return challenge ? 'unidade feita' : 'lição feita'
+  if (accuracyOf(r) < LESSON.pass) return `${Math.round(LESSON.pass * 100)}% para marcar como feita`
+  return `até ${seconds(limit ?? LESSON.challengeTime)} por nota para marcar como feita`
+}
+
+/**
+ * Uma lição de trilha: cartões de conceito, depois os segmentos em ordem
+ * (notas, ritmo ou partitura no tempo), com um cartão entre eles. O "?"
+ * reabre os conceitos. No fim, o acerto e a próxima lição.
+ */
+export function LessonScreen({ lessonId }: { lessonId: string }) {
   const def = lesson(lessonId)
-  const stage = stageOf(lessonId)
-  const number = stageLessons(def.stage).indexOf(def) + 1
+  const unit = unitOf(lessonId)
+  const number = unit.lessons.indexOf(def) + 1
   const next = nextLesson(lessonId)
-  const svgRef = useRef<SVGSVGElement>(null)
-  const ctrl = useRef<LessonController | null>(null)
-  const timbre = useRef<Timbre>('piano')
   const [phase, setPhase] = useState<Phase>('loading')
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [mic, setMic] = useState<Microphone | null>(null)
+  const [micError, setMicError] = useState('')
+  const [seg, setSeg] = useState(0)
+  const [help, setHelp] = useState(false)
   const [result, setResult] = useState<LessonResult | null>(null)
-  const [card, setCard] = useState<LessonCard | null>(null)
   const [hud, setHudState] = useState<Hud>(EMPTY_HUD)
   const setHud = useCallback((patch: Partial<Hud>) => setHudState((h) => ({ ...h, ...patch })), [])
+  const results = useRef<LessonResult[]>([])
+  const handle = useRef<SegmentHandle | null>(null)
+  const needsMic = def.segments.some((s) => s.kind !== 'rhythm' && s.input === 'mic')
+  const hasCards = !!def.cards?.length
+  const segment = def.segments[seg]
 
+  // ajustes e microfone; depois, o áudio e os cartões
   useEffect(() => {
     let cancelled = false
-    let staff: StaffStage | null = null
-    let controller: LessonController | null = null
+    let opened: Microphone | null = null
     void (async () => {
       const s = await loadSettings()
       if (cancelled) return
-      // o mesmo som dos botões da Leitura
-      timbre.current = s.activities.reading?.timbre ?? 'piano'
-      staff = new StaffStage(svgRef.current!, { hitX: HIT_X, fadeFrom: FADE_FROM })
-      controller = new LessonController({
-        lesson: def,
-        stage: staff,
-        guide: staff.addGuide(lessonNotes(def), GUIDE_X, reviewNotes(def).map(parseNote)),
-        timbre: () => timbre.current,
-        setHud,
-        setCard,
-        finish: (r) => {
-          const accuracy = accuracyOf(r)
-          // o recorde de tempo só vale com o acerto mínimo
-          void saveLessonResult(def.id, accuracy, passes(def, r), accuracy >= LESSON.pass ? r.meanTime : undefined).then(() => {
-            if (cancelled) return
-            setResult(r)
-            setPhase('done')
-          })
-        },
-      })
-      ctrl.current = controller
-      if (import.meta.env.DEV) (window as unknown as { __lambada: unknown }).__lambada = { controller }
+      setSettings(s)
+      if (needsMic) {
+        try {
+          opened = await Microphone.open(s.audioDeviceId, s.latencyMs)
+        } catch (e) {
+          if (cancelled) return
+          setMicError(e instanceof Error ? `${e.name}: ${e.message}` : String(e))
+          setPhase('mic-error')
+          return
+        }
+        if (cancelled) return opened.close()
+        setMic(opened)
+      }
       if (isAudioRunning() || (await ensureAudioRunning())) {
-        if (cancelled) return
-        controller.start()
-        setPhase('running')
+        if (!cancelled) setPhase(hasCards ? 'cards' : 'running')
       } else if (!cancelled) setPhase('needs-gesture')
     })()
     return () => {
       cancelled = true
-      controller?.dispose()
-      staff?.dispose()
-      ctrl.current = null
+      opened?.close()
     }
-  }, [def, setHud])
+  }, [needsMic, hasCards])
 
   const beginAfterGesture = async () => {
-    if (await ensureAudioRunning()) {
-      ctrl.current?.start()
-      setPhase('running')
-    }
+    if (await ensureAudioRunning()) setPhase(hasCards ? 'cards' : 'running')
   }
 
-  const leave = () => navigate({ name: 'topic', topic: 'pauta' }, true)
+  const finishSegment = useCallback(
+    (r: LessonResult) => {
+      results.current.push(r)
+      if (seg + 1 < def.segments.length) {
+        setHudState((h) => ({ ...h, feedback: null, countdown: null }))
+        setSeg(seg + 1)
+        setPhase('between')
+        return
+      }
+      const total = combine(results.current)
+      const accuracy = accuracyOf(total)
+      const passed = passes(def, total)
+      // o recorde de tempo só vale com o acerto mínimo
+      void saveLessonResult(def.id, accuracy, passed, accuracy >= LESSON.pass ? total.meanTime : undefined).then(() => {
+        setResult(total)
+        setPhase('done')
+      })
+    },
+    [seg, def],
+  )
+
+  const leave = () => navigate({ name: 'topic', topic: unit.topic }, true)
   const again = () => startLesson(lessonId, true)
-  // depois da última lição, a trilha desemboca na Leitura
-  const goNext = () => (next ? startLesson(next.id, true) : startActivity('reading', true))
+  // depois da última lição, a trilha desemboca na prática livre
+  const goNext = () => (next ? startLesson(next.id, true) : startActivity(unit.topic === 'teoria' ? 'reading' : 'notes', true))
   const passed = result ? passes(def, result) : false
+  const canMore = !!handle.current?.more
   const trainMore = () => {
+    // o "+" soma ao resultado do último segmento, que continua na mesma tela
+    results.current.pop()
     setResult(null)
     setPhase('running')
-    ctrl.current?.more()
+    handle.current?.more?.(LESSON.moreNotes)
   }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (help || phase === 'cards') return
       if (e.key === 'Escape') {
         e.preventDefault()
         leave()
-      } else if ((e.key === 'Enter' || e.key === ' ') && card) {
-        e.preventDefault()
-        ctrl.current?.dismissCard()
-      } else if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) {
+      } else if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement) && phase !== 'between') {
         if (phase === 'needs-gesture') void beginAfterGesture()
         else if (phase === 'done') (passed ? goNext : again)()
+      } else if (phase === 'between' && !e.repeat && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        setPhase('running')
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const fb = hud.feedback
   const stat = hud.stats[0]
-  const nextLabel = `próxima: ${next ? (next.stage === def.stage ? next.title : `${stageOf(next.id).title} · ${next.title}`) : 'Leitura'}`
+  const progress = (seg + (hud.progress ?? 0)) / def.segments.length
+  const nextLabel = `próxima: ${next ? (next.unit === def.unit ? next.title : `${unitOf(next.id).title} · ${next.title}`) : unit.topic === 'teoria' ? 'Leitura' : 'Notas'}`
+  const limit = challengeTime(def)
+  // o segmento só monta depois dos cartões (e continua montado no resultado, para o "+")
+  const mounted = phase === 'running' || phase === 'done'
+  const props: Omit<SegmentProps<never>, 'body'> | null = settings && {
+    lesson: def,
+    settings,
+    mic,
+    timbre: (settings.activities.reading?.timbre ?? 'piano') as Timbre,
+    paused: help || phase === 'done',
+    hud,
+    setHud,
+    onDone: finishSegment,
+    handle,
+  }
+
   return (
     <div className="mx-auto flex h-dvh w-full max-w-5xl flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
       <header className="flex items-center gap-3">
         <span className="flex-1 truncate text-sm text-sub">
-          {stage.title} {number} · <span className="text-text">{def.title}</span>
+          {unit.title} {number} · <span className="text-text">{def.title}</span>
         </span>
         {stat && (
           <span className="tabular font-mono text-sm text-sub" title={stat.label}>
@@ -143,66 +186,49 @@ export function LessonScreen({ lessonId }: { lessonId: LessonId }) {
           </span>
         )}
         {hud.progressText && <span className="tabular font-mono text-sm text-sub">{hud.progressText}</span>}
-        <button
-          type="button"
-          onClick={again}
-          aria-label="Reiniciar"
-          title="Reiniciar"
-          className="grid size-10 place-items-center rounded-lg text-lg text-sub hover:bg-surface hover:text-text"
-        >
+        {hasCards && (
+          <button
+            type="button"
+            onClick={() => setHelp(true)}
+            aria-label="Rever a explicação"
+            title="Rever a explicação"
+            className="grid size-10 place-items-center rounded-lg text-lg text-sub hover:bg-surface hover:text-text"
+          >
+            <IconHelp />
+          </button>
+        )}
+        <button type="button" onClick={again} aria-label="Reiniciar" title="Reiniciar" className="grid size-10 place-items-center rounded-lg text-lg text-sub hover:bg-surface hover:text-text">
           <IconRedo />
         </button>
-        <button
-          type="button"
-          onClick={leave}
-          aria-label="Sair"
-          title="Sair (esc)"
-          className="grid size-10 place-items-center rounded-lg text-lg text-sub hover:bg-surface hover:text-text"
-        >
+        <button type="button" onClick={leave} aria-label="Sair" title="Sair (esc)" className="grid size-10 place-items-center rounded-lg text-lg text-sub hover:bg-surface hover:text-text">
           <IconX />
         </button>
       </header>
-      <ProgressBar value={hud.progress ?? 0} className="mt-3" />
+      <ProgressBar value={progress} className="mt-3" />
 
-      {/* tela grande: pauta e botões juntos no meio, perto do olho e do mouse; celular: botões no rodapé, perto do polegar */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto sm:justify-center-safe">
-        <div className="relative flex flex-col justify-center-safe max-sm:flex-1">
-          <svg
-            ref={svgRef}
-            // 'staff' também aqui: o React reescreve a classe e não pode apagar a do palco
-            className="staff h-[clamp(150px,36dvh,360px)] w-full shrink-0"
-            aria-label="Pauta"
-            role="img"
-          />
-          <div className="flex min-h-16 flex-col items-center justify-start gap-0.5 text-center" aria-live="polite">
-            {fb && (fb.kind !== 'ok' || fb.text) && (
-              <div key={fb.key} className="animate-fade-in">
-                <div className={cx('text-2xl font-semibold', fb.kind === 'err' && 'text-err', fb.kind === 'info' && 'text-accent')}>{fb.text}</div>
-                {fb.detail && <div className="text-sm text-sub">{fb.detail}</div>}
-              </div>
-            )}
-          </div>
-          {card && (
-            <button
-              type="button"
-              onClick={() => ctrl.current?.dismissCard()}
-              className="absolute inset-0 z-10 grid animate-fade-in place-items-center bg-bg/80 backdrop-blur-[2px]"
-            >
-              <span className="flex flex-col items-center gap-1">
-                <span className="text-3xl font-semibold tracking-tight">{card.title}</span>
-                {card.detail && <span className="text-sub">{card.detail}</span>}
-                <span className="mt-3 text-xs text-sub">qualquer tecla para seguir</span>
-              </span>
-            </button>
-          )}
-        </div>
+      {props && mounted && segment ? <SegmentView key={seg} segment={segment} {...props} /> : <div className="flex-1" />}
 
-        <footer className="mt-2">
-          <NoteButtons accidentals={false} disabled={phase !== 'running'} onAnswer={(s, t) => ctrl.current?.answerButton(s, t) ?? null} />
-        </footer>
-      </div>
+      {phase === 'between' && segment && (
+        <button type="button" onClick={() => setPhase('running')} className="fixed inset-0 z-20 grid animate-fade-in place-items-center bg-bg/85 p-6 backdrop-blur-sm">
+          <span className="flex flex-col items-center gap-1">
+            <span className="text-3xl font-semibold tracking-tight">{betweenCard(segment).title}</span>
+            {betweenCard(segment).detail && <span className="text-sub">{betweenCard(segment).detail}</span>}
+            <span className="mt-3 text-xs text-sub">qualquer tecla para seguir</span>
+          </span>
+        </button>
+      )}
 
-      {(phase === 'needs-gesture' || phase === 'done') && (
+      {(phase === 'cards' || help) && def.cards && (
+        <ConceptCards
+          ids={def.cards}
+          onClose={() => {
+            if (help) setHelp(false)
+            else setPhase('running')
+          }}
+        />
+      )}
+
+      {(phase === 'needs-gesture' || phase === 'mic-error' || (phase === 'done' && result)) && (
         <div className="fixed inset-0 z-20 grid animate-fade-in place-items-center bg-bg/85 p-6 backdrop-blur-sm">
           <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
             {phase === 'needs-gesture' && (
@@ -214,16 +240,27 @@ export function LessonScreen({ lessonId }: { lessonId: LessonId }) {
                 </Button>
               </>
             )}
+            {phase === 'mic-error' && (
+              <>
+                <h2 className="text-2xl font-semibold">sem microfone</h2>
+                <p className="text-sm text-sub">Esta lição ouve o violão. Verifique a permissão do navegador e o dispositivo nas configurações.</p>
+                <p className="w-full rounded-md bg-surface px-3 py-2 text-left font-mono text-xs break-words text-sub">{micError}</p>
+                <div className="flex w-full gap-2">
+                  <Button className="flex-1" onClick={again}>
+                    <IconRedo /> tentar de novo
+                  </Button>
+                  <Button className="flex-1" onClick={() => navigate({ name: 'settings' })}>
+                    configurações
+                  </Button>
+                </div>
+              </>
+            )}
             {phase === 'done' && result && (
               <>
                 <div className="flex flex-col items-center gap-1">
-                  <span className={cx('tabular font-mono text-5xl font-semibold', passed ? 'text-ok' : 'text-text')}>
-                    {Math.round(accuracyOf(result) * 100)}%
-                  </span>
-                  {result.meanTime !== undefined && (
-                    <span className="tabular font-mono text-sm text-text">{seconds(result.meanTime)} por nota</span>
-                  )}
-                  <span className="text-sm text-sub">{status(def.challenge, result, passed)}</span>
+                  <span className={cx('tabular font-mono text-5xl font-semibold', passed ? 'text-ok' : 'text-text')}>{Math.round(accuracyOf(result) * 100)}%</span>
+                  {limit !== null && result.meanTime !== undefined && <span className="tabular font-mono text-sm text-text">{seconds(result.meanTime)} por nota</span>}
+                  <span className="text-sm text-sub">{status(def.challenge, limit, result, passed)}</span>
                 </div>
                 <Button variant="primary" className="w-full" onClick={passed ? goNext : again} autoFocus>
                   {passed ? (
@@ -237,9 +274,11 @@ export function LessonScreen({ lessonId }: { lessonId: LessonId }) {
                   )}
                 </Button>
                 <div className="flex w-full gap-2">
-                  <Button className="flex-1" onClick={trainMore}>
-                    + {LESSON.moreNotes} notas
-                  </Button>
+                  {canMore && (
+                    <Button className="flex-1" onClick={trainMore}>
+                      + {LESSON.moreNotes}
+                    </Button>
+                  )}
                   {passed ? (
                     <Button className="flex-1" onClick={again}>
                       <IconRedo /> de novo
@@ -262,9 +301,8 @@ export function LessonScreen({ lessonId }: { lessonId: LessonId }) {
   )
 }
 
-/** O que falta para marcar como feita (ou que já está). */
-function status(challenge: boolean | undefined, r: LessonResult, passed: boolean): string {
-  if (passed) return challenge ? 'etapa feita' : 'lição feita'
-  if (accuracyOf(r) < LESSON.pass) return `${Math.round(LESSON.pass * 100)}% para marcar como feita`
-  return `até ${seconds(LESSON.challengeTime)} por nota para marcar como feita`
+function SegmentView({ segment, ...props }: { segment: Segment } & Omit<SegmentProps<never>, 'body'>) {
+  if (segment.kind === 'notes') return <NotesSegment body={segment} {...props} />
+  if (segment.kind === 'rhythm') return <RhythmSegment body={segment} {...props} />
+  return <ScoreSegment body={segment} {...props} />
 }
