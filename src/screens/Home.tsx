@@ -31,7 +31,7 @@ export function Home() {
     <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-10">
       <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-3">
         <TopicTile topic="teoria" subtitle="do zero, passo a passo" art={<TheoryArt />} />
-        <TopicTile topic="pauta" subtitle="ler as notas e o ritmo" art={<StaffArt />} />
+        <TopicTile topic="pauta" subtitle="leitura e ritmo, à vontade" art={<StaffArt />} />
         <TopicTile topic="violao" subtitle="achar no braço" art={<FretArt />} />
       </div>
       {resume && (

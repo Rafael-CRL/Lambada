@@ -19,7 +19,7 @@ function stringCard(text: string, staff: string, marks: ReturnType<typeof pos>[]
     text,
     art: () => (
       <div className="flex w-full flex-col items-center gap-2">
-        <StaffArt notes={artNotes(staff)} spacing={48} minWidth={220} />
+        <StaffArt notes={artNotes(staff)} spacing={48} minWidth={220} compact />
         <FretArt marks={marks} />
       </div>
     ),
@@ -28,7 +28,7 @@ function stringCard(text: string, staff: string, marks: ReturnType<typeof pos>[]
 }
 
 export const CARDS: Record<string, ConceptCard> = {
-  // ------------------------------------------------------------ a pauta, a clave e as linhas
+  // ------------------------------------------------------------ notas na pauta: o Sol da clave como referência
   pauta: {
     text: 'A pauta tem 5 linhas e 4 espaços, contados de baixo para cima.',
     art: () => <StaffArt glow={[0, 2, 4, 6, 8, 1, 3, 5, 7]} numbers="both" />,
@@ -43,53 +43,67 @@ export const CARDS: Record<string, ConceptCard> = {
     demo: () => void playNotes('E4 B4 F5', 0.6),
   },
   clave: {
-    text: 'A clave de sol se enrola na 2ª linha e marca ali o Sol. As outras notas se acham a partir dele.',
+    text: 'A clave de sol é a chave da pauta: ela se enrola na 2ª linha, e a 2ª linha é sempre Sol.',
     art: () => <StaffArt glow={[2]} notes={artNotes('G4')} />,
     demo: () => void playNotes('G4'),
-  },
-  mi: {
-    text: 'Uma linha abaixo, na 1ª, fica o Mi.',
-    art: () => <StaffArt notes={artNotes('E4 G4')} spacing={70} />,
-    demo: () => void playNotes('E4 G4'),
   },
   escala: {
     text: 'As notas naturais em ordem, do grave ao agudo: Dó, Ré, Mi, Fá, Sol, Lá, Si… e volta o Dó.',
     art: () => <StaffArt notes={artNotes('C4 D4 E4 F4 G4 A4 B4 C5')} spacing={34} minWidth={320} />,
     demo: () => void playNotes('C4 D4 E4 F4 G4 A4 B4 C5'),
   },
-  saltos: {
-    text: 'De uma linha para a seguinte, pula-se uma nota da escala: Mi, (Fá), Sol, (Lá), Si.',
+  passo: {
+    text: 'Na pauta, cada vizinho é a próxima nota: um passo acima do Sol fica o Lá; um abaixo, o Fá.',
+    art: () => <StaffArt notes={[{ id: 'F4', label: 'Fá' }, { id: 'G4', label: 'Sol', accent: true }, { id: 'A4', label: 'Lá' }]} spacing={70} />,
+    demo: () => void playNotes('G4 A4 G4 F4', 0.5),
+  },
+  mapa: {
+    text: 'O mapa da pauta: 9 notas, do Mi ao Fá. Todas se acham contando a partir do Sol.',
+    art: () => (
+      <StaffArt
+        notes={['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5'].map((id) => ({ ...artNotes(id)[0], accent: id === 'G4' }))}
+        spacing={30}
+        minWidth={320}
+      />
+    ),
+    demo: () => void playNotes('E4 F4 G4 A4 B4 C5 D5 E5 F5', 0.35),
+  },
+  pulo: {
+    text: 'De uma linha para a seguinte, pula-se uma nota: um pulo abaixo do Sol é o Mi; um acima, o Si.',
     art: () => (
       <StaffArt
         notes={[
           { id: 'E4', label: 'Mi' },
           { id: 'F4', label: 'Fá', faint: true },
-          { id: 'G4', label: 'Sol' },
+          { id: 'G4', label: 'Sol', accent: true },
           { id: 'A4', label: 'Lá', faint: true },
           { id: 'B4', label: 'Si' },
         ]}
         spacing={44}
       />
     ),
-    demo: () => void playNotes('E4 G4 B4', 0.6),
+    demo: () => void playNotes('G4 E4 G4 B4', 0.5),
   },
-  reFa: {
-    text: 'Subindo: Ré na 4ª linha e Fá na 5ª, a de cima.',
-    art: () => <StaffArt notes={artNotes('E4 G4 B4 D5 F5')} spacing={48} />,
-    demo: () => void playNotes('E4 G4 B4 D5 F5'),
-  },
-
-  // ------------------------------------------------------------ espaços
-  espacos: {
-    text: 'Os espaços guardam as notas que as linhas pulam: Fá, Lá, Dó, Mi.',
+  do: {
+    text: 'O Dó, no 3º espaço, é a segunda referência: fica no meio da pauta, três notas acima do Sol.',
     art: () => (
       <StaffArt
-        notes={['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5'].map((id, i) => (i % 2 ? artNotes(id)[0] : { id, faint: true }))}
-        spacing={34}
-        minWidth={320}
+        notes={[
+          { id: 'G4', label: 'Sol' },
+          { id: 'A4', faint: true },
+          { id: 'B4', faint: true },
+          { id: 'C5', label: 'Dó', accent: true },
+          { id: 'D5', label: 'Ré' },
+        ]}
+        spacing={44}
       />
     ),
-    demo: () => void playNotes('F4 A4 C5 E5'),
+    demo: () => void playNotes('G4 A4 B4 C5 D5'),
+  },
+  topo: {
+    text: 'Acima do Ré, o Mi (4º espaço) e o Fá (5ª linha). A pauta está completa.',
+    art: () => <StaffArt notes={artNotes('C5 D5 E5 F5')} spacing={54} />,
+    demo: () => void playNotes('C5 D5 E5 F5'),
   },
   escalaPauta: {
     text: 'Na pauta, linha e espaço se alternam: cada vizinho é a próxima nota da escala.',
@@ -130,7 +144,7 @@ export const CARDS: Record<string, ConceptCard> = {
       <div className="flex flex-col items-center gap-4">
         <PulseArt label="pé" />
         <div className="flex items-center gap-5">
-          <span className="w-16 text-right text-sm text-sub">mão</span>
+          <span className="w-16 text-right text-base text-sub">mão</span>
           <Kbd>espaço</Kbd>
         </div>
       </div>
@@ -234,6 +248,11 @@ export const CARDS: Record<string, ConceptCard> = {
     art: () => <StaffArt notes={artNotes('G4 A4 B4 G4')} spacing={56} />,
     demo: () => void playNotes('G4 A4 B4 G4', 1),
   },
+  todaPauta: {
+    text: 'Agora a pauta toda, com as suplementares. Mais devagar: conte a partir da borda e leia um pouco à frente.',
+    art: () => <StaffArt notes={artNotes('A3 C4 G4 C5 E5 A5 C6')} spacing={44} />,
+    demo: () => void playNotes('A3 C4 G4 C5 E5 A5 C6', 0.5),
+  },
   frente: {
     text: 'Leia um pouco à frente: enquanto uma nota soa, olhe a próxima.',
     art: () => <StaffArt notes={[{ id: 'E4', label: 'agora', accent: true }, { id: 'G4', label: 'a seguir' }]} spacing={90} />,
@@ -244,7 +263,7 @@ export const CARDS: Record<string, ConceptCard> = {
     text: '♯ sustenido: meio tom acima. No violão, uma casa à frente.',
     art: () => (
       <div className="flex w-full flex-col items-center gap-2">
-        <StaffArt notes={artNotes('F4 F#4')} spacing={80} minWidth={220} />
+        <StaffArt notes={artNotes('F4 F#4')} spacing={80} minWidth={220} compact />
         <FretArt marks={[pos(4, 3, 'Fá'), pos(4, 4, 'Fá♯')]} toFret={5} />
       </div>
     ),
@@ -254,7 +273,7 @@ export const CARDS: Record<string, ConceptCard> = {
     text: '♭ bemol: meio tom abaixo. No violão, uma casa para trás.',
     art: () => (
       <div className="flex w-full flex-col items-center gap-2">
-        <StaffArt notes={artNotes('B4 Bb4')} spacing={80} minWidth={220} />
+        <StaffArt notes={artNotes('B4 Bb4')} spacing={80} minWidth={220} compact />
         <FretArt marks={[pos(3, 4, 'Si'), pos(3, 3, 'Si♭')]} toFret={5} />
       </div>
     ),
@@ -265,10 +284,34 @@ export const CARDS: Record<string, ConceptCard> = {
     art: () => <StaffArt notes={artNotes('F#4 Gb4')} spacing={80} />,
     demo: () => void playNotes('F#4 Gb4', 0.8),
   },
+  ateBarra: {
+    text: 'O acidente vale até o fim do compasso: depois de um Fá♯, outro Fá no mesmo compasso também é Fá♯. A barra desfaz.',
+    art: () => (
+      <StaffArt
+        notes={[
+          { id: 'F#4', label: 'Fá♯' },
+          { id: 'F4', label: 'Fá♯', accent: true },
+          { id: 'F4', label: 'Fá' },
+        ]}
+        bars={[2]}
+        spacing={80}
+      />
+    ),
+    demo: () => void playNotes('F#4 F#4 F4', 0.6),
+  },
   bequadro: {
-    text: '♮ bequadro: cancela o acidente, e a nota volta a ser natural.',
-    art: () => <StaffArt notes={artNotes('F#4 F4♮')} spacing={80} />,
-    demo: () => void playNotes('F#4 F4', 0.6),
+    text: '♮ bequadro: cancela o acidente antes da barra, e a nota volta a ser natural.',
+    art: () => (
+      <StaffArt
+        notes={[
+          { id: 'F#4', label: 'Fá♯' },
+          { id: 'F4', label: 'Fá♯' },
+          { id: 'F4♮', label: 'Fá', accent: true },
+        ]}
+        spacing={80}
+      />
+    ),
+    demo: () => void playNotes('F#4 F#4 F4', 0.6),
   },
 
   // ------------------------------------------------------------ violão

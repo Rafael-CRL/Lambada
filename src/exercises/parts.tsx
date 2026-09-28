@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Fretboard } from '../staff/Fretboard'
 import { cx } from '../ui/controls'
+import { IconBulb } from '../ui/icons'
 import type { Feedback, FretFeedback } from './controller'
 
 /** Retorno sob a pauta: o nome certo no erro, o lugar da nota nova, "certo!". */
@@ -23,6 +24,16 @@ export function FeedbackLine({ fb, infoTone = 'accent' }: { fb: Feedback | null;
           {fb.detail && <div className="text-sm text-sub">{fb.detail}</div>}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Dica depois de muitos erros: discreta, sem bloquear. */
+export function TipLine({ text }: { text: string }) {
+  return (
+    <div key={text} className="mx-auto flex max-w-lg animate-fade-in items-start gap-2.5 rounded-lg bg-surface px-4 py-2.5 text-left text-sm leading-snug text-text" role="status">
+      <IconBulb className="mt-0.5 shrink-0 text-base text-accent" />
+      <span>{text}</span>
     </div>
   )
 }

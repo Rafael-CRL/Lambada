@@ -1,5 +1,5 @@
 import type { CellId, Meter } from '../domain/rhythm'
-import type { NoteSet, ScaleId } from '../domain/scales'
+import { noteSetOf, type NoteSet, type ScaleId } from '../domain/scales'
 import type { InputKind } from '../engine/adaptive'
 
 /**
@@ -127,7 +127,8 @@ export function isActivityId(s: string | undefined): s is ActivityId {
   return ACTIVITIES.some((a) => a.id === s)
 }
 
-export const TOPIC_TITLE: Record<Topic, string> = { teoria: 'Teoria musical', pauta: 'Pauta', violao: 'Violão' }
+// 'pauta' é a prática livre de leitura (notas e ritmo): o id ficou, o nome diz o que se faz ali
+export const TOPIC_TITLE: Record<Topic, string> = { teoria: 'Teoria musical', pauta: 'Praticar', violao: 'Violão' }
 
 /** Configuração efetiva de uma sessão (o que o controlador lê). */
 export interface ExerciseConfig {
@@ -171,7 +172,7 @@ export function buildConfig(id: ActivityId, saved: Partial<ActivityOptions> | un
     scale: def.controls.includes('region') ? scale : 'solta',
     accidentals: def.controls.includes('accidentals') && o.accidentals,
     timbre: def.input === 'buttons' ? o.timbre : 'off',
-    notes: def.controls.includes('notes') ? o.notes : undefined,
+    notes: def.controls.includes('notes') ? noteSetOf(o.notes) : undefined,
     meter: def.controls.includes('meter') ? o.meter : undefined,
   }
 }

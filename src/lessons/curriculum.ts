@@ -6,12 +6,10 @@ import { upDown, type LessonDef, type NotesBody, type ScoreBody, type TrailTopic
 /**
  * Currículo. Teoria musical: notas e ritmo intercalados, do zero à leitura
  * de partitura no tempo. Violão: a primeira posição, corda por corda.
- * Os ids das lições de Linhas, Espaços e Suplementares vêm da trilha antiga
- * (o progresso guardado continua valendo); lições cortadas deixam o número vago.
+ * Os ids das lições de Suplementares vêm da trilha antiga (o progresso
+ * guardado continua valendo); lições cortadas deixam o número vago.
  */
 
-const LINES = ['E4', 'G4', 'B4', 'D5', 'F5']
-const SPACES = ['F4', 'A4', 'C5', 'E5']
 const STAFF = ['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5']
 // o Mi da 1ª linha e o Mi do 4º espaço são a referência de onde se conta: ficam no padrão, não no sorteio
 const BELOW = ['E4', 'D4', 'C4', 'B3', 'A3', 'G3', 'F3', 'E3']
@@ -26,6 +24,7 @@ const intro = (...ids: string[]) => ({ kind: 'intro' as const, notes: ids })
 const introOnce = (...ids: string[]) => ({ kind: 'intro' as const, notes: ids, times: 1 })
 const pattern = (seq: string[], names = false) => ({ kind: 'pattern' as const, seq, names })
 const mix = (count: number) => ({ kind: 'mix' as const, count })
+const bars = (list: string[][], names = false) => ({ kind: 'bars' as const, bars: list, names })
 
 function rhythm(cells: CellId[], parts: RhythmPart[], extra: Partial<RhythmBody> = {}): RhythmBody {
   return { kind: 'rhythm', cells, parts, ...extra }
@@ -45,25 +44,34 @@ function lessonsOf(unit: string, list: (Omit<LessonDef, 'id' | 'unit'> & { n?: n
 
 const TEORIA: UnitDef[] = [
   {
-    id: 'linhas',
+    // linhas e espaços juntos, a partir de referências: o Sol da clave e depois o Dó do 3º espaço
+    id: 'notas',
     topic: 'teoria',
-    title: 'Linhas',
-    hint: 'Mi Sol Si Ré Fá',
-    lessons: lessonsOf('linhas', [
+    title: 'Notas na pauta',
+    hint: 'do Sol da clave às 9 notas',
+    practice: { activity: 'reading', options: { notes: 'pauta', accidentals: false } },
+    lessons: lessonsOf('notas', [
       {
-        title: 'Sol e Mi',
-        // a pauta não tem exercício: vê-se de uma vez, nos cartões
-        cards: ['pauta', 'linhaEspaco', 'altura', 'clave', 'mi'],
-        segments: [notes(['E4', 'G4'], [introOnce('G4', 'E4'), mix(12)])],
+        title: 'Sol, Fá e Lá',
+        cards: ['altura', 'pauta', 'linhaEspaco', 'clave', 'escala', 'passo'],
+        segments: [notes(['F4', 'G4', 'A4'], [introOnce('G4', 'A4', 'F4'), pattern(['G4', 'A4', 'G4', 'F4', 'G4', 'A4', 'F4']), mix(12)])],
       },
-      { title: 'Si', cards: ['escala', 'saltos'], segments: [notes(['E4', 'G4', 'B4'], [introOnce('B4'), pattern(upDown(['E4', 'G4', 'B4'])), mix(12)])] },
       {
-        title: 'Ré e Fá',
-        cards: ['reFa'],
-        // subindo e depois pulando uma linha (pulo maior: pula três notas)
-        segments: [notes(LINES, [introOnce('D5', 'F5'), pattern([...LINES, 'B4', 'E4', 'D5', 'G4', 'F5', 'B4', 'E4']), mix(12)])],
+        title: 'Mi e Si',
+        cards: ['mapa', 'pulo'],
+        segments: [notes(['E4', 'F4', 'G4', 'A4', 'B4'], [introOnce('E4', 'B4'), pattern(['G4', 'E4', 'G4', 'B4', 'A4', 'F4', 'A4', 'B4', 'G4']), mix(12)])],
       },
-      { n: 5, title: 'Desafio', challenge: true, segments: [notes(LINES, [mix(LESSON.challengeNotes)], { noGuide: true })] },
+      {
+        title: 'Dó e Ré',
+        cards: ['do'],
+        segments: [notes(STAFF.slice(0, 7), [introOnce('C5', 'D5'), pattern(['G4', 'A4', 'B4', 'C5', 'A4', 'C5', 'D5', 'B4', 'C5']), mix(12)])],
+      },
+      {
+        title: 'Mi e Fá de cima',
+        cards: ['topo', 'escalaPauta'],
+        segments: [notes(STAFF, [introOnce('E5', 'F5'), pattern(STAFF), mix(12)])],
+      },
+      { title: 'Desafio', challenge: true, segments: [notes(STAFF, [mix(LESSON.challengeNotes)], { noGuide: true })] },
     ]),
   },
   {
@@ -71,40 +79,30 @@ const TEORIA: UnitDef[] = [
     topic: 'teoria',
     title: 'Pulso e figuras',
     hint: 'semínima, mínima, semibreve',
+    practice: { activity: 'rhythm', options: { level: 2 } },
     lessons: lessonsOf('figuras', [
       {
         title: 'Pulso e semínima',
         cards: ['pulso', 'pe', 'seminima'],
-        segments: [rhythm(['q'], [{ mode: 'imitate', count: 2 }, { mode: 'read', count: 3 }])],
+        // só semínimas: um aquecimento curto para sentir o pulso e o gesto de bater (os trechos são todos iguais)
+        segments: [rhythm(['q'], [{ mode: 'imitate', count: 1 }, { mode: 'read', count: 1 }])],
       },
       {
         title: 'Mínima',
         cards: ['minima'],
         segments: [
-          rhythm(['q', 'h'], [{ mode: 'imitate', count: 3 }, { mode: 'read', count: 4 }, { mode: 'value', count: 4 }, { mode: 'write', count: 3 }], { focus: ['h'], must: ['h'] }),
+          rhythm(['q', 'h'], [{ mode: 'imitate', count: 3 }, { mode: 'read', count: 4 }, { mode: 'write', count: 3 }], { focus: ['h'], must: ['h'] }),
         ],
       },
       {
         title: 'Semibreve',
         cards: ['semibreve'],
         segments: [
-          rhythm(['q', 'h', 'w'], [{ mode: 'imitate', count: 2 }, { mode: 'read', count: 4 }, { mode: 'value', count: 5 }, { mode: 'write', count: 3 }], { focus: ['w'] }),
+          // "quantos pulsos" só aqui, com as três figuras juntas (antes seria repetir o cartão)
+          rhythm(['q', 'h', 'w'], [{ mode: 'imitate', count: 2 }, { mode: 'read', count: 4 }, { mode: 'value', count: 3 }, { mode: 'write', count: 3 }], { focus: ['w'] }),
         ],
       },
       { title: 'Desafio', challenge: true, segments: [rhythmChallenge(['q', 'h', 'w'])] },
-    ]),
-  },
-  {
-    id: 'espacos',
-    topic: 'teoria',
-    title: 'Espaços',
-    hint: 'Fá Lá Dó Mi',
-    review: LINES,
-    lessons: lessonsOf('espacos', [
-      { title: 'Fá e Lá', cards: ['espacos'], segments: [notes(['F4', 'A4'], [introOnce('F4', 'A4'), mix(12)])] },
-      { title: 'Dó e Mi', segments: [notes(SPACES, [introOnce('C5', 'E5'), pattern([...upDown(SPACES), 'C5', 'F4', 'E5', 'A4']), mix(12)])] },
-      { n: 4, title: 'A escala', cards: ['escalaPauta'], segments: [notes(STAFF, [pattern(upDown(STAFF)), mix(10)])] },
-      { n: 5, title: 'Desafio', challenge: true, segments: [notes(STAFF, [mix(LESSON.challengeNotes)], { noGuide: true })] },
     ]),
   },
   {
@@ -112,6 +110,7 @@ const TEORIA: UnitDef[] = [
     topic: 'teoria',
     title: 'Compasso',
     hint: 'barra, 4/4, 3/4, 2/4',
+    practice: { activity: 'rhythm', options: { level: 2 } },
     lessons: lessonsOf('compasso', [
       {
         title: 'Barra de compasso',
@@ -119,16 +118,12 @@ const TEORIA: UnitDef[] = [
         segments: [rhythm(['q', 'h', 'w'], [{ mode: 'read', count: 4 }, { mode: 'complete', count: 5 }, { mode: 'write', count: 3 }])],
       },
       {
-        title: 'Três por compasso',
-        cards: ['formula', 'formulaBaixo', 'tres'],
-        segments: [rhythm(['q', 'h'], [{ mode: 'imitate', count: 2 }, { mode: 'read', count: 4 }, { mode: 'complete', count: 4 }, { mode: 'write', count: 2 }], { meters: [3] })],
+        title: 'Três e dois por compasso',
+        cards: ['formula', 'formulaBaixo', 'tres', 'dois'],
+        // 2/4 sozinho, só com semínima e mínima, teria dois compassos possíveis: vai junto com o 3/4
+        segments: [rhythm(['q', 'h'], [{ mode: 'imitate', count: 2 }, { mode: 'read', count: 5 }, { mode: 'complete', count: 4 }, { mode: 'write', count: 3 }], { meters: [3, 2, 3] })],
       },
-      {
-        title: 'Dois por compasso',
-        cards: ['dois'],
-        segments: [rhythm(['q', 'h'], [{ mode: 'imitate', count: 2 }, { mode: 'read', count: 4 }, { mode: 'write', count: 2 }], { meters: [2] })],
-      },
-      { title: 'Desafio', challenge: true, segments: [rhythmChallenge(['q', 'h', 'w'], [4, 3, 2])] },
+      { n: 4, title: 'Desafio', challenge: true, segments: [rhythmChallenge(['q', 'h', 'w'], [4, 3, 2])] },
     ]),
   },
   {
@@ -137,19 +132,20 @@ const TEORIA: UnitDef[] = [
     title: 'Suplementares',
     hint: 'abaixo e acima da pauta',
     review: STAFF,
+    practice: { activity: 'reading', options: { notes: 'suplementares', accidentals: false } },
     lessons: lessonsOf('suplementares', [
       {
         title: 'Ré, Dó e Si',
         cards: ['suplementares', 'contarDaBorda'],
-        segments: [notes(BELOW.slice(1, 4), [intro('D4', 'C4', 'B3'), pattern(upDown(BELOW.slice(0, 4))), mix(10)])],
+        segments: [notes(BELOW.slice(1, 4), [introOnce('D4', 'C4', 'B3'), pattern(upDown(BELOW.slice(0, 4))), mix(12)])],
       },
-      { title: 'Até o Mi grave', segments: [notes(BELOW.slice(1), [intro('A3', 'G3', 'F3', 'E3'), pattern(BELOW), mix(10)])] },
+      { title: 'Até o Mi grave', segments: [notes(BELOW.slice(1), [introOnce('A3', 'G3', 'F3', 'E3'), pattern(BELOW), mix(12)])] },
       {
         title: 'Sol, Lá e Si',
         cards: ['suplementaresCima'],
-        segments: [notes(ABOVE.slice(2, 5), [intro('G5', 'A5', 'B5'), pattern(upDown(ABOVE.slice(0, 5))), mix(10)])],
+        segments: [notes(ABOVE.slice(2, 5), [introOnce('G5', 'A5', 'B5'), pattern(upDown(ABOVE.slice(0, 5))), mix(12)])],
       },
-      { title: 'Até o Mi agudo', segments: [notes(ABOVE.slice(2), [intro('C6', 'D6', 'E6'), pattern(ABOVE), mix(10)])] },
+      { title: 'Até o Mi agudo', segments: [notes(ABOVE.slice(2), [introOnce('C6', 'D6', 'E6'), pattern(ABOVE), mix(12)])] },
       {
         title: 'Desafio',
         challenge: true,
@@ -164,6 +160,7 @@ const TEORIA: UnitDef[] = [
     topic: 'teoria',
     title: 'Pausas',
     hint: 'o silêncio também conta',
+    practice: { activity: 'rhythm', options: { level: 3 } },
     lessons: lessonsOf('pausas', [
       {
         title: 'Pausa de semínima',
@@ -183,11 +180,12 @@ const TEORIA: UnitDef[] = [
     topic: 'teoria',
     title: 'Colcheias',
     hint: 'dois sons num pulso',
+    practice: { activity: 'rhythm', options: { level: 4 } },
     lessons: lessonsOf('colcheias', [
       {
         title: 'Colcheia',
         cards: ['colcheia'],
-        segments: [rhythm(['q', 'h', 'ee'], [{ mode: 'imitate', count: 3 }, { mode: 'read', count: 4 }, { mode: 'value', count: 3 }, { mode: 'write', count: 3 }], { focus: ['ee'], must: ['ee'] })],
+        segments: [rhythm(['q', 'h', 'ee'], [{ mode: 'imitate', count: 3 }, { mode: 'read', count: 4 }, { mode: 'write', count: 3 }], { focus: ['ee'], must: ['ee'] })],
       },
       {
         title: 'Com pausas',
@@ -201,11 +199,12 @@ const TEORIA: UnitDef[] = [
     topic: 'teoria',
     title: 'Ponto de aumento',
     hint: 'metade a mais',
+    practice: { activity: 'rhythm', options: { level: 5 } },
     lessons: lessonsOf('ponto', [
       {
         title: 'Mínima pontuada',
         cards: ['ponto'],
-        segments: [rhythm(['q', 'h', 'dh'], [{ mode: 'imitate', count: 2 }, { mode: 'read', count: 4 }, { mode: 'value', count: 3 }, { mode: 'write', count: 3 }], { focus: ['dh'], must: ['dh'], meters: [3, 4] })],
+        segments: [rhythm(['q', 'h', 'dh'], [{ mode: 'imitate', count: 3 }, { mode: 'read', count: 4 }, { mode: 'write', count: 3 }], { focus: ['dh'], must: ['dh'], meters: [3, 4] })],
       },
       {
         title: 'Semínima pontuada',
@@ -220,11 +219,14 @@ const TEORIA: UnitDef[] = [
     topic: 'teoria',
     title: 'Leitura de partitura',
     hint: 'notas e ritmo juntos',
+    practice: { activity: 'reading', options: { notes: 'todas', tempo: 'metronome', accidentals: false } },
     lessons: lessonsOf('leitura', [
       { title: 'Mínimas e semibreves', cards: ['juntos', 'frente'], segments: [score(['h', 'w'], STAFF, 50, 4)] },
       { title: 'Com semínimas', segments: [score(['q', 'h', 'w'], STAFF, 50, 6)] },
       { title: 'Com pausas', segments: [score(['q', 'h', 'w', 'qr', 'hr'], STAFF, 56, 6)] },
-      { title: 'Desafio', challenge: true, segments: [score(['q', 'h', 'w', 'qr', 'hr'], ALL, 60, 8)] },
+      // as suplementares entram antes do Desafio, devagar (antes o Desafio saltava de 9 para 21 notas)
+      { n: 5, title: 'Pela pauta toda', cards: ['todaPauta'], segments: [score(['q', 'h', 'w', 'qr', 'hr', 'dh'], ALL, 50, 6)] },
+      { n: 4, title: 'Desafio', challenge: true, segments: [score(['q', 'h', 'w', 'qr', 'hr', 'dh'], ALL, 60, 8)] },
     ]),
   },
   {
@@ -232,14 +234,16 @@ const TEORIA: UnitDef[] = [
     topic: 'teoria',
     title: 'Acidentes',
     hint: '♯ ♭ ♮',
+    practice: { activity: 'reading', options: { notes: 'pauta', accidentals: true } },
     lessons: lessonsOf('acidentes', [
       {
         title: 'Sustenido',
         cards: ['sustenido'],
         segments: [
-          notes(['F4', 'F#4', 'C5', 'C#5', 'G4', 'G#4'], [intro('F#4', 'C#5'), pattern(['F4', 'F#4', 'G4', 'F#4', 'F4', 'C5', 'C#5', 'D5', 'C#5', 'C5']), mix(12)], {
+          notes(['F4', 'F#4', 'C5', 'C#5', 'G4', 'G#4'], [introOnce('F#4', 'C#5'), pattern(['F4', 'F#4', 'G4', 'F#4', 'F4', 'C5', 'C#5', 'D5', 'C#5', 'C5']), mix(12)], {
             accidentals: true,
             noGuide: true,
+            barEach: true,
           }),
         ],
       },
@@ -247,21 +251,32 @@ const TEORIA: UnitDef[] = [
         title: 'Bemol',
         cards: ['bemol', 'enarmonia'],
         segments: [
-          notes(['B4', 'Bb4', 'E5', 'Eb5', 'A4', 'Ab4'], [intro('Bb4', 'Eb5'), pattern(['B4', 'Bb4', 'A4', 'Bb4', 'B4', 'E5', 'Eb5', 'D5', 'Eb5', 'E5']), mix(12)], {
+          notes(['B4', 'Bb4', 'E5', 'Eb5', 'A4', 'Ab4'], [introOnce('Bb4', 'Eb5'), pattern(['B4', 'Bb4', 'A4', 'Bb4', 'B4', 'E5', 'Eb5', 'D5', 'Eb5', 'E5']), mix(12)], {
             accidentals: true,
             noGuide: true,
+            barEach: true,
           }),
         ],
       },
       {
-        title: 'Bequadro',
-        cards: ['bequadro'],
-        segments: [notes(['F#4', 'F4♮', 'C#5', 'C5♮', 'Bb4', 'B4♮', 'Eb5', 'E5♮'], [pattern(['F#4', 'F4♮', 'C#5', 'C5♮', 'Bb4', 'B4♮'], true), mix(12)], { accidentals: true, noGuide: true })],
+        // o bequadro só tem função dentro de um compasso: o acidente vale até a barra, e o ♮ cancela antes dela
+        title: 'Até a barra',
+        cards: ['ateBarra', 'bequadro'],
+        segments: [
+          notes(
+            ['F4', 'F#4', 'C5', 'C#5', 'B4', 'Bb4', 'E5', 'Eb5', 'D5', 'G4', 'A4'],
+            [
+              bars([['F#4', 'F4', 'G4'], ['F4']], true),
+              bars([['C#5', 'C5', 'D5'], ['C5', 'C#5', 'C5♮'], ['Bb4', 'A4', 'B4'], ['B4'], ['F#4', 'F4', 'F4♮'], ['Eb5', 'E5', 'D5'], ['E5', 'Eb5', 'E5♮'], ['F#4', 'G4', 'F4']]),
+            ],
+            { accidentals: true, noGuide: true },
+          ),
+        ],
       },
       {
         title: 'Desafio',
         challenge: true,
-        segments: [notes(['F4', 'F#4', 'G4', 'G#4', 'A4', 'Bb4', 'B4', 'C5', 'C#5', 'D5', 'Eb5', 'E5'], [mix(LESSON.challengeNotes)], { accidentals: true, noGuide: true })],
+        segments: [notes(['F4', 'F#4', 'G4', 'G#4', 'A4', 'Bb4', 'B4', 'C5', 'C#5', 'D5', 'Eb5', 'E5'], [mix(LESSON.challengeNotes)], { accidentals: true, noGuide: true, barEach: true })],
       },
     ]),
   },
@@ -294,6 +309,7 @@ const VIOLAO: UnitDef[] = [
     topic: 'violao',
     title: 'Primeira posição',
     hint: 'corda por corda, da 1ª à 6ª',
+    practice: { activity: 'notes', options: {} },
     lessons: lessonsOf('posicao', [
       ...[1, 2, 3, 4, 5, 6].map(stringLesson),
       {

@@ -46,9 +46,15 @@ describe('sessão', () => {
     expect((await db.itemStats.get('buttons:E5'))?.wrong).toBe(1)
   })
 
-  test('Leitura: conjunto de notas (linhas) e ♯♭ da mesma letra', async () => {
-    const s = await StudySession.open(buildConfig('reading', { notes: 'linhas', accidentals: true }, 'solta'), 'solta', true)
-    expect(s.active.map((i) => i.id).sort()).toEqual(['B4', 'Bb4', 'D5', 'D#5', 'Db5', 'E4', 'Eb4', 'F#5', 'F5', 'G#4', 'G4', 'Gb4'].sort())
+  test('Leitura: conjunto de notas; "linhas" guardado vira a pauta', async () => {
+    const s = await StudySession.open(buildConfig('reading', { notes: 'linhas' as never }, 'solta'), 'solta', false)
+    expect(s.active.map((i) => i.id).sort()).toEqual(['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5'].sort())
+  })
+
+  test('Leitura: ♯♭ da mesma letra', async () => {
+    const s = await StudySession.open(buildConfig('reading', { notes: 'pauta', accidentals: true }, 'solta'), 'solta', true)
+    expect(s.active.map((i) => i.id)).toEqual(expect.arrayContaining(['G4', 'G#4', 'Gb4', 'E4', 'Eb4', 'F5', 'F#5']))
+    expect(s.active.map((i) => i.id)).not.toContain('E#4')
   })
 
   test('violão: a região; lições filtram pelas notas da lição', async () => {

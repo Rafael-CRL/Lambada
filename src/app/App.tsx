@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { saveSettings } from '../db/db'
 import { ExerciseScreen } from '../exercises/ExerciseScreen'
+import { GuideScreen } from '../lessons/GuideScreen'
 import { LessonScreen } from '../lessons/LessonScreen'
 import { Home } from '../screens/Home'
 import { Progress } from '../screens/Progress'
@@ -31,6 +32,7 @@ export function App() {
       {route.name === 'home' && <Home />}
       {route.name === 'topic' && <ActivityList key={route.topic} topic={route.topic} />}
       {route.name === 'summary' && <Summary id={route.id} />}
+      {route.name === 'guide' && <GuideScreen unit={route.unit} />}
       {route.name === 'progress' && <Progress settings={settings} />}
       {route.name === 'settings' && <SettingsScreen settings={settings} />}
     </Shell>

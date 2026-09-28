@@ -3,6 +3,7 @@ import { noteId, parseNote, type Note } from '../domain/notes'
 import type { CellId } from '../domain/rhythm'
 import { staffStep } from '../domain/staff'
 import { shuffle } from '../engine/picker'
+import type { ActivityId, ActivityOptions } from '../exercises/types'
 import type { RhythmBody } from '../rhythm/items'
 
 /**
@@ -20,6 +21,12 @@ type Part =
   | { kind: 'pattern'; seq: string[]; names?: boolean }
   /** sorteio entre as notas do `pool` (mais a revisão da unidade) */
   | { kind: 'mix'; count: number }
+  /**
+   * Compassos com barra entre eles: dentro de um compasso, a nota sem sinal
+   * herda o acidente da anterior de mesma altura, até a barra ou um ♮.
+   * `names` mostra o nome (demonstração).
+   */
+  | { kind: 'bars'; bars: string[][]; names?: boolean }
 
 /** Notas na pauta, uma de cada vez (semibreves em fila, sem compasso). */
 export interface NotesBody {
@@ -33,6 +40,8 @@ export interface NotesBody {
   accidentals?: boolean
   /** sem a cola das linhas */
   noGuide?: boolean
+  /** uma barra de compasso entre cada nota (lições de acidentes: um ♯ não passa para a nota seguinte) */
+  barEach?: boolean
   /** notas revisadas no sorteio (padrão: as da unidade) */
   review?: string[]
 }
@@ -71,7 +80,14 @@ export interface UnitDef {
   hint: string
   /** notas de unidades anteriores que voltam no sorteio */
   review?: string[]
+  /** onde continuar treinando depois do Desafio: uma atividade da prática, com os ajustes da unidade */
+  practice?: Practice
   lessons: LessonDef[]
+}
+
+export interface Practice {
+  activity: ActivityId
+  options: Partial<ActivityOptions>
 }
 
 /** Sobe e volta, sem repetir o topo: [a, b, c] → a b c b a. */
@@ -87,7 +103,12 @@ export function lessonNote(id: string): { note: Note; natural: boolean } {
 
 /** Uma nota da lição, com as ajudas visíveis quando ela chega. */
 export interface LessonStep {
+  /** a nota que vale (a resposta) */
   note: Note
+  /** a nota desenhada, quando o acidente vem de antes no compasso (sem o sinal) */
+  shown?: Note
+  /** começa um compasso: barra antes dela */
+  barStart?: boolean
   /** mostra o ♮ */
   natural?: boolean
   part: Part['kind']
@@ -211,7 +232,36 @@ function cardFor(l: NotesLesson, part: Part, first: boolean): LessonCard | undef
   if (first) return undefined
   if (part.kind === 'pattern') return { title: 'agora em ordem', detail: 'subindo e descendo' }
   if (part.kind === 'mix') return { title: 'agora sozinho', detail: 'sem ajuda' }
+  if (part.kind === 'bars' && !part.names) return { title: 'agora você', detail: 'o acidente vale até a barra' }
   return undefined
+}
+
+/**
+ * Compassos → notas. Dentro do compasso, o acidente vale para as notas
+ * seguintes de mesma altura (desenhadas sem o sinal) até a barra; o ♮ cancela.
+ */
+export function barSteps(bars: string[][], names: boolean, afterOthers = false): LessonStep[] {
+  const steps: LessonStep[] = []
+  for (const bar of bars) {
+    const carry = new Map<string, Note['acc']>()
+    bar.forEach((id, i) => {
+      const { note, natural } = lessonNote(id)
+      const key = `${note.letter}${note.octave}`
+      if (note.acc !== 0 || natural) carry.set(key, note.acc)
+      const acc = carry.get(key) ?? 0
+      const inherited = note.acc === 0 && !natural && acc !== 0
+      steps.push({
+        note: inherited ? { ...note, acc } : note,
+        shown: inherited ? note : undefined,
+        natural,
+        part: 'pattern',
+        name: names,
+        guide: 0,
+        barStart: i === 0 && (steps.length > 0 || afterOthers),
+      })
+    })
+  }
+  return steps
 }
 
 /** Monta a sequência completa da lição de notas. */
@@ -224,10 +274,16 @@ export function lessonSteps(l: NotesLesson, rng: () => number = Math.random): Le
       const times = part.times ?? (part.notes.length > 2 ? LESSON.introRepeatMany : LESSON.introRepeat)
       for (const id of part.notes)
         for (let k = 0; k < times; k++) steps.push({ ...lessonNote(id), part: 'intro', name: true, guide, isNew: k === 0 })
+    } else if (part.kind === 'bars') {
+      steps.push(...barSteps(part.bars, !!part.names, steps.length > 0))
     } else if (part.kind === 'pattern') {
       for (const id of part.seq) steps.push({ ...lessonNote(id), part: 'pattern', name: !!part.names, guide: guide * LESSON.patternGuide })
     } else {
-      steps.push(...mixSteps(l, part.count, rng, steps.map((s) => noteId(s.note))))
+      const mix = mixSteps(l, part.count, rng, steps.map((s) => noteId(s.note)))
+      // a cola não some de uma vez: continua a fraca do padrão e vai apagando (fora do Desafio)
+      if (guide && !l.challenge)
+        mix.slice(0, LESSON.fadeNotes).forEach((s, k) => (s.guide = LESSON.patternGuide * (1 - (k + 1) / (LESSON.fadeNotes + 1))))
+      steps.push(...mix)
     }
     const card = cardFor(l, part, i === 0)
     if (card && steps[start]) steps[start].card = card
@@ -238,7 +294,7 @@ export function lessonSteps(l: NotesLesson, rng: () => number = Math.random): Le
 /** Todas as notas da lição (para a cola), sem as da revisão. */
 export function lessonNotes(body: NotesBody): Note[] {
   const ids = new Set<string>(body.pool)
-  for (const p of body.parts) for (const id of p.kind === 'intro' ? p.notes : p.kind === 'pattern' ? p.seq : []) ids.add(id)
+  for (const p of body.parts) for (const id of p.kind === 'intro' ? p.notes : p.kind === 'pattern' ? p.seq : p.kind === 'bars' ? p.bars.flat() : []) ids.add(id)
   const notes = new Map<string, Note>()
   for (const id of ids) {
     const n = lessonNote(id).note

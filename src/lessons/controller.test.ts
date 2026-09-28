@@ -40,6 +40,8 @@ function setup(id: string, mic = false) {
   const events: { type: 'note'; midi: number; onsetTime: number }[] = []
   let card: Card = null
   let fret: unknown = null
+  let tip: string | null = null
+  let bars = 0
   let result: Result | null = null
   const c = new LessonController({
     lesson: { body, challenge: def.challenge, review: reviewFor(def, body) },
@@ -51,6 +53,10 @@ function setup(id: string, mic = false) {
         notes.push(n)
         return n
       }) as never,
+      addShapes: (() => {
+        bars++
+        return new FakeNote(null as never)
+      }) as never,
     },
     guide: { show: (base, on) => void shown.push([base, on]) },
     timbre: () => 'off',
@@ -59,6 +65,7 @@ function setup(id: string, mic = false) {
     finish: (r) => (result = r),
     mic: mic ? { poll: () => events.splice(0) as never } : null,
     setFret: (f) => (fret = f),
+    setTip: (t) => (tip = t),
     rng: () => 0.3,
   })
   c.start()
@@ -83,13 +90,13 @@ function setup(id: string, mic = false) {
     }
     tick(1)
   }
-  return { c, notes, shown, head, right, wrong, play, tick, finishAll, card: () => card, fret: () => fret, result: () => result }
+  return { c, notes, shown, head, right, wrong, play, tick, finishAll, card: () => card, fret: () => fret, tip: () => tip, bars: () => bars, result: () => result }
 }
 
 describe('lição de notas', () => {
   test('cartão entre as partes: a tecla só fecha o cartão', () => {
-    const t = setup('linhas-2')
-    expect(t.right()).toBe('correct')
+    const t = setup('notas-2')
+    for (let i = 0; i < 2; i++) expect(t.right()).toBe('correct')
     expect(t.card()?.title).toBe('agora em ordem')
     const answered = t.c.answered
     expect(t.right()).toBeNull()
@@ -99,7 +106,7 @@ describe('lição de notas', () => {
   })
 
   test('erro mostra o nome, espera e segue para a próxima', () => {
-    const t = setup('linhas-3')
+    const t = setup('notas-3')
     const n = t.notes.find((x) => x.note === t.head())!
     expect(t.wrong()).toBe('wrong')
     expect(n.state).toBe('err')
@@ -112,7 +119,7 @@ describe('lição de notas', () => {
   })
 
   test('no sorteio, a nota errada volta depois, com a cola acesa só nela', () => {
-    const t = setup('linhas-3')
+    const t = setup('notas-3')
     while (t.card()?.title !== 'agora sozinho') t.right()
     t.right()
     const total = t.c.total
@@ -127,16 +134,16 @@ describe('lição de notas', () => {
   })
 
   test('termina com acertos e tentativas das notas sem nome', () => {
-    const t = setup('linhas-1')
+    const t = setup('notas-1')
     t.finishAll()
     const r = t.result()!
-    expect(r.attempts).toBe(t.c.total - 2)
+    expect(r.attempts).toBe(t.c.total - 3)
     expect(r.correct).toBe(r.attempts)
     expect(r.meanTime).toBeUndefined()
   })
 
   test('Desafio: abre com o cartão e mede o tempo por nota', () => {
-    const t = setup('linhas-5')
+    const t = setup('notas-5')
     expect(t.card()?.title).toBe('Desafio')
     t.finishAll()
     const r = t.result()!
@@ -146,13 +153,102 @@ describe('lição de notas', () => {
   })
 
   test('treinar mais: novas notas sem ajuda na mesma lição', () => {
-    const t = setup('linhas-1')
+    const t = setup('notas-1')
     t.finishAll()
     const before = t.c.total
     t.c.more()
     expect(t.c.total).toBe(before + LESSON.moreNotes)
     t.finishAll()
-    expect(t.result()!.attempts).toBe(t.c.total - 2)
+    expect(t.result()!.attempts).toBe(t.c.total - 3)
+  })
+
+  test('dica: dois erros seguidos no sorteio mostram a regra; some depois de algumas respostas', () => {
+    const t = setup('notas-1')
+    while (t.card()?.title !== 'agora sozinho') t.right()
+    t.right()
+    t.wrong()
+    t.tick(LESSON.revealTime + 0.05)
+    expect(t.tip()).toBeNull()
+    t.wrong()
+    expect(t.tip()).toMatch(/^Lembre-se/)
+    t.tick(LESSON.revealTime + 0.05)
+    for (let i = 0; i < LESSON.tipLasts; i++) {
+      expect(t.tip()).not.toBeNull()
+      t.right()
+      t.tick(0.5)
+    }
+    expect(t.tip()).toBeNull()
+  })
+
+  test('dica: nada no Desafio', () => {
+    const t = setup('notas-5')
+    t.right()
+    for (let i = 0; i < 4; i++) {
+      t.wrong()
+      t.tick(LESSON.revealTime + 0.05)
+    }
+    expect(t.tip()).toBeNull()
+  })
+
+  test('depois de um erro, a cola volta fraca e apaga nota a nota', () => {
+    const t = setup('notas-3')
+    while (t.card()?.title !== 'agora sozinho') t.right()
+    for (let i = 0; i < LESSON.fadeNotes + 1; i++) t.right()
+    t.tick(0.5)
+    expect(t.shown.at(-1)![0]).toBe(0)
+    t.wrong()
+    t.tick(LESSON.revealTime + 0.05)
+    const after: number[] = []
+    for (let i = 0; i < LESSON.supportNotes + 1; i++) {
+      after.push(t.shown.at(-1)![0])
+      t.right()
+      t.tick(0.5)
+    }
+    expect(after[0]).toBeCloseTo(LESSON.supportGuide)
+    expect(after[1]).toBeLessThan(after[0])
+    expect(after.at(-1)).toBe(0)
+  })
+
+  test('ver a cola: acende tudo, a nota não conta e volta depois', () => {
+    const t = setup('notas-3')
+    while (t.card()?.title !== 'agora sozinho') t.right()
+    t.c.dismissCard()
+    t.tick(0.02)
+    const total = t.c.total
+    const helped = t.head()
+    t.c.help()
+    expect(t.shown.at(-1)).toEqual([1, null])
+    t.right()
+    expect(t.c.total).toBe(total + 1)
+    t.finishAll()
+    const r = t.result()!
+    expect(r.attempts).toBe(r.correct)
+    // fora a apresentação (2), só a nota ajudada não conta
+    expect(r.attempts).toBe(t.c.total - 2 - 1)
+    expect(t.notes.filter((n) => noteId(n.note) === noteId(helped)).length).toBeGreaterThan(1)
+  })
+
+  test('ver a cola: não existe no Desafio', () => {
+    const t = setup('notas-5')
+    t.right()
+    t.tick(0.02)
+    const before = t.shown.length
+    t.c.help()
+    expect(t.shown.length).toBe(before)
+  })
+
+  test('acidentes: barra entre as notas; a nota herdada pede o acidente de antes', () => {
+    const t = setup('acidentes-1')
+    t.finishAll()
+    expect(t.bars()).toBeGreaterThan(10)
+    const u = setup('acidentes-3')
+    // Fá♯, depois um Fá sem sinal no mesmo compasso: vale Fá♯
+    u.tick(0.02)
+    expect(noteId(u.head())).toBe('F#4')
+    u.right()
+    u.tick(0.5)
+    expect(noteId(u.head())).toBe('F#4')
+    expect(u.notes.find((n) => n.note.letter === 'F' && n.note.acc === 0)).toBeDefined()
   })
 
   test('violão: o microfone responde; na apresentação o braço mostra onde fica', () => {

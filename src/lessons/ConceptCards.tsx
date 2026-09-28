@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, cx } from '../ui/controls'
-import { IconArrowLeft, IconArrowRight, IconPlay } from '../ui/icons'
+import { IconArrowLeft, IconArrowRight, IconBook, IconPlay } from '../ui/icons'
 import { CARDS } from './cards'
 
 /**
@@ -8,7 +8,7 @@ import { CARDS } from './cards'
  * Qualquer tecla (ou clique) segue; ← volta; Esc fecha. O botão ouvir toca o
  * exemplo, quando há.
  */
-export function ConceptCards({ ids, onClose }: { ids: string[]; onClose: () => void }) {
+export function ConceptCards({ ids, onClose, onGuide }: { ids: string[]; onClose: () => void; onGuide?: () => void }) {
   const [i, setI] = useState(0)
   const cards = ids.map((id) => CARDS[id]).filter(Boolean)
   const card = cards[i]
@@ -37,9 +37,9 @@ export function ConceptCards({ ids, onClose }: { ids: string[]; onClose: () => v
   if (!card) return null
   return (
     <div className="fixed inset-0 z-30 grid animate-fade-in place-items-center overflow-y-auto bg-bg/95 p-6 backdrop-blur-sm" role="dialog" aria-label="Conceito">
-      <div key={i} className="flex w-full max-w-xl animate-fade-in flex-col items-center gap-6 text-center">
-        {card.art && <div className="flex min-h-40 w-full items-center justify-center">{card.art()}</div>}
-        <p className="max-w-md text-xl leading-snug font-medium text-balance sm:text-2xl">{card.text}</p>
+      <div key={i} className="flex w-full max-w-4xl animate-fade-in flex-col items-center gap-8 text-center">
+        {card.art && <div className="flex min-h-56 w-full items-center justify-center sm:min-h-80">{card.art()}</div>}
+        <p className="max-w-2xl text-2xl leading-snug font-medium text-balance sm:text-3xl">{card.text}</p>
         <div className="flex items-center gap-2">
           {cards.length > 1 &&
             cards.map((_, k) => <span key={k} className={cx('size-1.5 rounded-full', k === i ? 'bg-accent' : 'bg-line')} />)}
@@ -58,6 +58,11 @@ export function ConceptCards({ ids, onClose }: { ids: string[]; onClose: () => v
           </Button>
         </div>
         <span className="text-xs text-sub">qualquer tecla para seguir · ← volta</span>
+        {onGuide && (
+          <button type="button" onClick={onGuide} className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-sub hover:bg-surface hover:text-text">
+            <IconBook /> prefere ler com calma? abrir o guia
+          </button>
+        )}
       </div>
     </div>
   )

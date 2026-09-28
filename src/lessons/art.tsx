@@ -10,7 +10,7 @@ import { barFromCells, cellEvents, FIGURE_BEATS, type CellId } from '../domain/r
 import { onsets, type RhythmPattern } from '../rhythm/patterns'
 import { FigureGlyph, RhythmStaff, rhythmLayout } from '../rhythm/RhythmStaff'
 import { Fretboard, type FretMarker } from '../staff/Fretboard'
-import { CLEF_END, S, TIMESIG_W, timeSigShapes, yOfStep } from '../staff/geometry'
+import { barlineShapes, CLEF_END, S, TIMESIG_W, timeSigShapes, yOfStep } from '../staff/geometry'
 import { ShapeView, StaffSvg } from '../staff/StaffSvg'
 import { cx } from '../ui/controls'
 import { lessonNote } from './lessons'
@@ -40,6 +40,8 @@ export function StaffArt({
   numbers,
   spacing = 40,
   minWidth = 260,
+  compact = false,
+  bars = [],
 }: {
   notes?: ArtNote[]
   /** passos (pauta) que acendem, em ordem */
@@ -48,11 +50,16 @@ export function StaffArt({
   numbers?: 'lines' | 'spaces' | 'both'
   spacing?: number
   minWidth?: number
+  /** menor, para dividir o cartão com o braço */
+  compact?: boolean
+  /** barra de compasso antes destas notas (índices) */
+  bars?: number[]
 }) {
   const width = Math.max(minWidth, CLEF_END + 18 + Math.max(0, notes.length - 1) * spacing + 40)
   return (
     <StaffSvg
-      className="h-44 w-full max-w-lg sm:h-56"
+      // a largura segue a proporção do desenho (centrado no cartão)
+      className={compact ? 'h-40 w-auto max-w-full sm:h-56' : 'h-56 w-auto max-w-full sm:h-80'}
       minWidth={width}
       spacing={spacing}
       ariaLabel="Pauta"
@@ -67,6 +74,13 @@ export function StaffArt({
         }
       })}
     >
+      {bars.map((i) => (
+        <g key={`b${i}`} transform={`translate(${CLEF_END + 18 + (i - 0.5) * spacing} 0)`}>
+          {barlineShapes().map((sh, k) => (
+            <ShapeView key={k} s={sh} />
+          ))}
+        </g>
+      ))}
       {glow?.map((step, i) => (
         <line
           key={`g${step}`}
@@ -128,7 +142,7 @@ export function RhythmArt({
     for (let b = 0; b < bars.length * meter; b += counts === 'halves' ? 0.5 : 1)
       labels.push({ beat: b, text: b % 1 ? 'e' : String((b % meter) + 1), strong: b % meter === 0 })
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-2xl">
       <RhythmStaff bars={bars} meter={meter} kind={kind} className="w-full" />
       <svg viewBox={`0 0 ${L.width} ${2.4 * S}`} className="w-full" aria-hidden="true">
         {labels.map((l) => (
@@ -145,12 +159,12 @@ export function RhythmArt({
 export function PulseArt({ label, beats = 4 }: { label?: string; beats?: number }) {
   const period = (beats * 60) / RHYTHM.bpm
   return (
-    <div className="flex items-center justify-center gap-5">
-      {label && <span className="w-16 text-right text-sm text-sub">{label}</span>}
+    <div className="flex items-center justify-center gap-7">
+      {label && <span className="w-16 text-right text-base text-sub">{label}</span>}
       {Array.from({ length: beats }, (_, i) => (
         <span
           key={i}
-          className={cx('art-pulse size-5 rounded-full bg-surface-2', i === 0 && 'size-6')}
+          className={cx('art-pulse size-7 rounded-full bg-surface-2', i === 0 && 'size-9')}
           style={{ animationDuration: `${period}s`, animationDelay: `${(i * 60) / RHYTHM.bpm}s` }}
         />
       ))}
@@ -164,10 +178,10 @@ export function FigureArt({ cell, rest = false }: { cell: CellId; rest?: boolean
   const beats = ev.reduce((s, e) => s + FIGURE_BEATS[e.figure], 0)
   return (
     <div className="flex flex-col items-center gap-3">
-      <FigureGlyph events={ev} className={cx('h-24 sm:h-28', rest && 'opacity-90')} />
+      <FigureGlyph events={ev} className={cx('h-32 sm:h-40', rest && 'opacity-90')} />
       <div className="flex gap-2">
         {Array.from({ length: Math.ceil(beats) }, (_, i) => (
-          <span key={i} className="size-3 rounded-full bg-accent" />
+          <span key={i} className="size-4 rounded-full bg-accent" />
         ))}
       </div>
     </div>
@@ -178,7 +192,7 @@ export function FigureArt({ cell, rest = false }: { cell: CellId; rest?: boolean
 export function MeterArt({ meters = [4, 3, 2], mark }: { meters?: number[]; mark: 'top' | 'bottom' }) {
   const w = meters.length * (TIMESIG_W + 3 * S)
   return (
-    <svg viewBox={`0 ${yOfStep(8) - S} ${w} ${yOfStep(0) - yOfStep(8) + 2 * S}`} className="staff h-32 w-auto" aria-hidden="true">
+    <svg viewBox={`0 ${yOfStep(8) - S} ${w} ${yOfStep(0) - yOfStep(8) + 2 * S}`} className="staff h-40 w-auto sm:h-52" aria-hidden="true">
       {meters.map((m, i) => (
         <g key={m} transform={`translate(${i * (TIMESIG_W + 3 * S) + 1.5 * S} 0)`}>
           {[0, 2, 4, 6, 8].map((st) => (
@@ -198,14 +212,14 @@ export function MeterArt({ meters = [4, 3, 2], mark }: { meters?: number[]; mark
 /** Figura e a pausa de mesmo valor, lado a lado. */
 export function RestPairsArt({ cells }: { cells: [CellId, CellId, string][] }) {
   return (
-    <div className="grid w-full max-w-sm grid-cols-3 gap-4 text-center">
+    <div className="grid w-full max-w-xl grid-cols-3 gap-6 text-center">
       {cells.map(([note, rest, name]) => (
         <div key={note} className="flex flex-col items-center gap-1">
           <div className="flex items-end gap-2">
-            <FigureGlyph events={cellEvents(note)} className="h-14" />
-            <FigureGlyph events={cellEvents(rest)} className="h-14" />
+            <FigureGlyph events={cellEvents(note)} className="h-20 sm:h-24" />
+            <FigureGlyph events={cellEvents(rest)} className="h-20 sm:h-24" />
           </div>
-          <span className="text-xs text-sub">{name}</span>
+          <span className="text-sm text-sub">{name}</span>
         </div>
       ))}
     </div>
@@ -217,7 +231,7 @@ export function RestPairsArt({ cells }: { cells: [CellId, CellId, string][] }) {
 /** Braço com as casas marcadas e o nome de cada uma. */
 export function FretArt({ marks, toFret = 4 }: { marks: { position: Position; label: string }[]; toFret?: number }) {
   const markers: FretMarker[] = marks.map((m) => ({ position: m.position, kind: 'pick', label: m.label }))
-  return <Fretboard className="w-full max-w-sm" toFret={toFret} markers={markers} ariaLabel="Braço do violão" />
+  return <Fretboard className="w-full max-w-xl" toFret={toFret} markers={markers} ariaLabel="Braço do violão" />
 }
 
 // ---------------------------------------------------------------- som

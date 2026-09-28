@@ -19,7 +19,7 @@ import { parseNote } from '../domain/notes'
 import { staffStep } from '../domain/staff'
 import { NoteMap, type MapReach } from '../staff/NoteMap'
 import { StaffStage } from './stage'
-import { startActivity } from './start'
+import { onceOptions, restartActivity } from './start'
 import { activity, buildConfig, type ActivityId, type ExerciseConfig } from './types'
 
 type Phase = 'loading' | 'needs-gesture' | 'mic-error' | 'running' | 'paused'
@@ -99,7 +99,7 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
     void (async () => {
       const s = await loadSettings()
       if (cancelled) return
-      const c = buildConfig(activityId, s.activities[activityId], s.scale)
+      const c = buildConfig(activityId, { ...s.activities[activityId], ...onceOptions(activityId) }, s.scale)
       configRef.current = c
       setConfig(c)
       setSettings(s)
@@ -224,7 +224,7 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
     else navigate({ name: 'topic', topic: def.topic }, true)
   }
 
-  const restart = () => startActivity(activityId, true)
+  const restart = () => restartActivity(activityId)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

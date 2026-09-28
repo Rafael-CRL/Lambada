@@ -8,6 +8,7 @@ export type Route =
   | { name: 'play'; activity: ActivityId; run: number }
   | { name: 'lesson'; lesson: string; run: number }
   | { name: 'summary'; id: number }
+  | { name: 'guide'; unit: string }
   | { name: 'progress' }
   | { name: 'settings' }
 
@@ -20,6 +21,8 @@ export function parseHash(hash: string): Route {
       return isActivityId(parts[1]) ? { name: 'play', activity: parts[1], run } : { name: 'home' }
     case 'licao':
       return isLessonId(parts[1]) ? { name: 'lesson', lesson: parts[1], run } : { name: 'topic', topic: 'pauta' }
+    case 'guia':
+      return parts[1] ? { name: 'guide', unit: parts[1] } : { name: 'home' }
     case 'summary':
       return Number.isFinite(Number(parts[1])) ? { name: 'summary', id: Number(parts[1]) } : { name: 'home' }
     case 'progress':
@@ -45,6 +48,8 @@ export function routeHash(r: Route): string {
       return `#/licao/${r.lesson}${r.run ? `?run=${r.run}` : ''}`
     case 'summary':
       return `#/summary/${r.id}`
+    case 'guide':
+      return `#/guia/${r.unit}`
     case 'progress':
       return '#/progress'
     case 'settings':

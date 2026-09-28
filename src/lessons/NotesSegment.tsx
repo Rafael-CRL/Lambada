@@ -3,10 +3,11 @@ import { parseNote } from '../domain/notes'
 import type { FretFeedback } from '../exercises/controller'
 import { MicMeter } from '../exercises/MicMeter'
 import { NoteButtons } from '../exercises/NoteButtons'
-import { ExerciseBody, FeedbackLine, FretHint, PartCard } from '../exercises/parts'
+import { ExerciseBody, FeedbackLine, FretHint, PartCard, TipLine } from '../exercises/parts'
 import { StaffStage } from '../exercises/stage'
 import { CLEF_END } from '../staff/geometry'
-import { cx } from '../ui/controls'
+import { cx, Kbd } from '../ui/controls'
+import { IconStaffMap } from '../ui/icons'
 import { LessonController } from './controller'
 import { reviewFor } from './curriculum'
 import { lessonNotes, type LessonCard, type NotesBody } from './lessons'
@@ -26,6 +27,7 @@ export function NotesSegment({ lesson, body, mic, timbre, paused, hud, setHud, o
   timbreRef.current = timbre
   const [card, setCard] = useState<LessonCard | null>(null)
   const [fret, setFret] = useState<FretFeedback | null>(null)
+  const [tip, setTip] = useState<string | null>(null)
   const useMic = body.input === 'mic'
 
   useEffect(() => {
@@ -42,6 +44,7 @@ export function NotesSegment({ lesson, body, mic, timbre, paused, hud, setHud, o
       finish: onDone,
       mic: useMic ? mic : null,
       setFret: useMic ? setFret : undefined,
+      setTip: useMic ? undefined : setTip,
     })
     ctrl.current = c
     handle.current = { more: (n) => c.more(n), answered: () => c.answered }
@@ -59,6 +62,19 @@ export function NotesSegment({ lesson, body, mic, timbre, paused, hud, setHud, o
     if (paused) ctrl.current?.pause()
     else ctrl.current?.resume()
   }, [paused])
+
+  // H: ver a cola na nota da vez
+  const canHelp = !lesson.challenge && !body.noGuide
+  useEffect(() => {
+    if (!canHelp) return
+    const onKey = (e: KeyboardEvent) => {
+      if (paused || card || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.key.toLowerCase() !== 'h') return
+      e.preventDefault()
+      ctrl.current?.help()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [canHelp, card, paused])
 
   // qualquer tecla fecha o cartão entre as partes (as de nota já fecham pelos botões)
   useEffect(() => {
@@ -90,6 +106,18 @@ export function NotesSegment({ lesson, body, mic, timbre, paused, hud, setHud, o
         role="img"
       />
       <FeedbackLine fb={hud.feedback} />
+      {tip && <TipLine text={tip} />}
+      {canHelp && (
+        <button
+          type="button"
+          onClick={() => ctrl.current?.help()}
+          disabled={paused}
+          title="Mostra os nomes das linhas e espaços nesta nota (ela não conta e volta depois)"
+          className="mx-auto flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-sub hover:bg-surface hover:text-text"
+        >
+          <IconStaffMap /> ver a cola <Kbd>H</Kbd>
+        </button>
+      )}
       {fret && <FretHint fret={fret} />}
       {card && (
         <PartCard

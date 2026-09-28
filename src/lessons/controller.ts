@@ -8,12 +8,13 @@ import type { AttemptResult } from '../engine/adaptive'
 import { octaveHint, percent, pressedSoundingMidi, type Feedback, type FretFeedback, type Hud, type Spelling } from '../exercises/controller'
 import { ExerciseClock, FrameLoop, type StaffGuide, type StaffStage, type StageNote } from '../exercises/stage'
 import type { Timbre } from '../exercises/types'
-import { S } from '../staff/geometry'
+import { barlineShapes, S } from '../staff/geometry'
 import { lessonSteps, mixSteps, placeName, type LessonCard, type LessonResult, type LessonStep, type NotesLesson } from './lessons'
+import { TipTrigger, TIPS, tipFor, type TipId } from './tips'
 
 export interface LessonDeps {
   lesson: NotesLesson
-  stage: Pick<StaffStage, 'width' | 'hitNoteX' | 'addNote'>
+  stage: Pick<StaffStage, 'width' | 'hitNoteX' | 'addNote' | 'addShapes'>
   guide: Pick<StaffGuide, 'show'> | null
   /** lido a cada resposta (o som muda sem reiniciar) */
   timbre: () => Timbre
@@ -25,6 +26,8 @@ export interface LessonDeps {
   mic?: Pick<Microphone, 'poll'> | null
   /** violão: onde fica a nota no braço (null = some) */
   setFret?: (f: FretFeedback | null) => void
+  /** dica quando o aluno erra muito (null = some) */
+  setTip?: (text: string | null) => void
   rng?: () => number
 }
 
@@ -35,14 +38,18 @@ interface Slot extends LessonStep {
   gone: boolean
   /** o cartão desta nota já foi mostrado */
   carded?: boolean
+  /** o aluno pediu a cola: não conta, e no sorteio volta depois */
+  helped?: boolean
+  /** barra de compasso antes da nota */
+  bar?: StageNote
 }
 
 /**
  * Uma lição de notas: semibreves em fila, sem compasso. A nota na linha
- * espera a resposta (botão, linha/espaço ou o violão); errou, mostra a certa
+ * espera a resposta (botão ou o violão); errou, mostra a certa
  * (nome e lugar), espera um pouco e segue. No sorteio, a nota errada volta
  * algumas notas depois, com a cola acesa só para ela. Entre as partes, um
- * cartão espera qualquer tecla.
+ * cartão espera qualquer tecla. Errando muito, uma dica lembra a regra.
  */
 export class LessonController {
   private clock = new ExerciseClock()
@@ -66,10 +73,22 @@ export class LessonController {
   private paused = false
   private readonly gap = LESSON.gap * S
   private readonly mic: boolean
+  private tips = new TipTrigger()
+  private lastTip: TipId | null = null
+  /** respostas até a dica sumir */
+  private tipLeft = 0
+  /** a lição já apresentou o Dó do 3º espaço (2ª referência) */
+  private readonly knowsDo: boolean
+  /** notas que ainda recebem a cola fraca depois de um erro */
+  private support = 0
+  /** a cola pode ajudar (fora do Desafio e das lições sem cola) */
+  readonly guided: boolean
 
   constructor(private d: LessonDeps) {
     this.mic = d.lesson.body.input === 'mic'
     this.slots = lessonSteps(d.lesson, d.rng).map((s) => ({ ...s, x: Infinity, spawned: false, gone: false }))
+    this.knowsDo = this.slots.some((s) => noteId(s.note) === 'C5')
+    this.guided = !d.lesson.challenge && !d.lesson.body.noGuide
   }
 
   start() {
@@ -127,7 +146,19 @@ export class LessonController {
     if (!s) return null
     const timbre = this.d.timbre()
     if (timbre !== 'off') playNote(pressedSoundingMidi(spelling, s.note), timbre)
-    return this.judge(s, spellingId(spelling) === spellingId(s.note) ? 'correct' : 'wrong', this.clock.now(perfTime))
+    const result = this.judge(s, spellingId(spelling) === spellingId(s.note) ? 'correct' : 'wrong', this.clock.now(perfTime))
+    this.tip(s, spelling, result === 'correct')
+    return result
+  }
+
+  /** Dica depois de muitos erros (só nos botões, fora do Desafio e da apresentação). */
+  private tip(s: Slot, answer: Spelling, ok: boolean) {
+    if (!this.d.setTip || s.name || s.helped || this.d.lesson.challenge) return
+    if (this.tipLeft > 0 && --this.tipLeft === 0) this.d.setTip(null)
+    if (!this.tips.push(ok)) return
+    this.lastTip = tipFor(s.note, answer, this.knowsDo, this.lastTip)
+    this.tipLeft = LESSON.tipLasts
+    this.d.setTip(TIPS[this.lastTip])
   }
 
   /** Nota tocada no violão (MIDI escrito). */
@@ -141,11 +172,12 @@ export class LessonController {
   private judge(s: Slot, result: AttemptResult, now: number, playedWrittenMidi?: number): AttemptResult {
     const ok = result === 'correct'
     if (s.timed) this.times.push(Math.max(0, now - this.readyAt))
-    if (!s.name) {
+    if (!s.name && !s.helped) {
       this.attempts++
       if (ok) this.correct++
     }
     if (ok) {
+      if (s.helped && s.part === 'mix') this.retry(s)
       s.sn?.setState('ok')
       this.feedback('ok', '')
       this.d.setFret?.(null)
@@ -159,6 +191,7 @@ export class LessonController {
       if (playedWrittenMidi !== undefined) this.micMistake(s, playedWrittenMidi, result)
       else this.feedback('err', label, placeName(step))
       if (s.part === 'mix') this.retry(s)
+      if (this.guided) this.support = LESSON.supportNotes
       this.holdUntil = now + (this.mic ? LESSON.revealTimeMic : LESSON.revealTime)
     }
     this.hud()
@@ -215,10 +248,20 @@ export class LessonController {
       return
     }
     this.readyAt = this.clock.now()
-    this.d.guide?.show(s.guide, s.name || s.cue ? staffStep(s.note) : null)
+    // depois de um erro, a cola volta fraca e apaga nota a nota
+    const support = this.support > 0 ? (LESSON.supportGuide * this.support--) / LESSON.supportNotes : 0
+    this.d.guide?.show(Math.max(s.guide, support), s.name || s.cue ? staffStep(s.note) : null)
     // violão: na apresentação e na volta de um erro, o braço mostra onde fica
     if (this.mic && (s.part === 'intro' || s.cue)) this.showFret(s.note)
     if (s.isNew) this.feedback('info', namePt(s.note), placeName(staffStep(s.note)))
+  }
+
+  /** "Ver a cola": acende a cola inteira para a nota da vez. Ela não conta e, no sorteio, volta depois. */
+  help() {
+    const s = this.ready()
+    if (!s || !this.guided || s.name) return
+    s.helped = true
+    this.d.guide?.show(1, null)
   }
 
   /** Fecha o cartão e segue a lição (qualquer tecla, clique ou nota). */
@@ -269,8 +312,10 @@ export class LessonController {
       // anda até o alvo nos dois sentidos (uma nota que volta abre espaço na fila)
       e.x += Math.max(-step, Math.min(step, target - e.x))
       e.sn?.setX(e.x)
+      e.bar?.setX(e.x - this.gap / 2)
       if (e.x < -3 * S) {
         e.sn?.remove()
+        e.bar?.remove()
         e.gone = true
       }
     }
@@ -281,8 +326,11 @@ export class LessonController {
     e.spawned = true
     e.x = x
     const label = e.name ? { text: namePt(e.note), opacity: 1 } : undefined
-    e.sn = this.d.stage.addNote(e.note, x, label, { figure: 'whole', natural: e.natural })
+    // o acidente que vem de antes no compasso não é desenhado de novo
+    e.sn = this.d.stage.addNote(e.shown ?? e.note, x, label, { figure: 'whole', natural: e.natural })
     if (e.cue) e.sn.g.classList.add('is-retry')
+    // a barra fecha o compasso: um acidente não passa dela
+    if (e.barStart || (this.d.lesson.body.barEach && e !== this.slots[0])) e.bar = this.d.stage.addShapes(barlineShapes(), x - this.gap / 2, 'is-bar')
   }
 
   private end() {

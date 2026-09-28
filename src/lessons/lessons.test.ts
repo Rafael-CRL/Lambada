@@ -4,16 +4,16 @@ import { noteId, parseNote } from '../domain/notes'
 import { inStaffRange, staffStep } from '../domain/staff'
 import { rhythmItems } from '../rhythm/items'
 import { CARDS } from './cards'
+import { GUIDES } from './guides'
 import { LESSONS, lesson, nextLesson, reviewFor, topicUnits, UNITS, unitOf } from './curriculum'
 import {
+  barSteps,
   lessonNote,
-  lessonNotes,
   lessonSteps,
   mixSequence,
   passes,
   placeName,
   reviewNotes,
-  upDown,
   type LessonDef,
   type NotesBody,
   type NotesLesson,
@@ -34,8 +34,8 @@ const asLesson = (id: string): NotesLesson => {
 }
 
 describe('currículo', () => {
-  test('Teoria: 10 unidades, notas e ritmo intercalados', () => {
-    expect(topicUnits('teoria').map((u) => u.id)).toEqual(['linhas', 'figuras', 'espacos', 'compasso', 'suplementares', 'pausas', 'colcheias', 'ponto', 'leitura', 'acidentes'])
+  test('Teoria: 9 unidades, notas e ritmo intercalados', () => {
+    expect(topicUnits('teoria').map((u) => u.id)).toEqual(['notas', 'figuras', 'compasso', 'suplementares', 'pausas', 'colcheias', 'ponto', 'leitura', 'acidentes'])
   })
 
   test('Violão: a primeira posição, corda por corda, com Desafio', () => {
@@ -46,8 +46,11 @@ describe('currículo', () => {
   test('ids únicos; os da trilha antiga continuam (o progresso vale)', () => {
     const all = LESSONS.map((l) => l.id)
     expect(new Set(all).size).toBe(all.length)
-    for (const id of ['linhas-1', 'linhas-2', 'linhas-3', 'linhas-5', 'espacos-1', 'espacos-2', 'espacos-4', 'espacos-5']) expect(all).toContain(id)
     for (let i = 1; i <= 5; i++) expect(all).toContain(`suplementares-${i}`)
+  })
+
+  test('todo guia é de uma unidade que existe', () => {
+    for (const id of Object.keys(GUIDES)) expect(UNITS.some((u) => u.id === id), id).toBe(true)
   })
 
   test('todo cartão citado existe', () => {
@@ -79,11 +82,11 @@ describe('currículo', () => {
   })
 
   test('a próxima lição segue a trilha, atravessando as unidades', () => {
-    expect(nextLesson('linhas-3')?.id).toBe('linhas-5')
-    expect(nextLesson('linhas-5')?.id).toBe('figuras-1')
+    expect(nextLesson('notas-4')?.id).toBe('notas-5')
+    expect(nextLesson('notas-5')?.id).toBe('figuras-1')
     expect(nextLesson('acidentes-4')).toBeNull()
     expect(nextLesson('posicao-1')?.id).toBe('posicao-2')
-    expect(unitOf('espacos-2').title).toBe('Espaços')
+    expect(unitOf('notas-2').title).toBe('Notas na pauta')
   })
 
   test('toda unidade com Desafio o tem como última lição', () => {
@@ -105,24 +108,29 @@ describe('currículo', () => {
 })
 
 describe('sequência da lição de notas', () => {
-  test('Linhas começa pelo Sol da clave, uma vez, com o nome e a cola', () => {
-    const steps = lessonSteps(asLesson('linhas-1'), seeded())
+  test('a pauta começa pelo Sol da clave e os vizinhos, uma vez, com o nome e a cola', () => {
+    const steps = lessonSteps(asLesson('notas-1'), seeded())
     const intro = steps.filter((s) => s.part === 'intro')
-    expect(ids(intro)).toEqual(['G4', 'E4'])
+    expect(ids(intro)).toEqual(['G4', 'A4', 'F4'])
     expect(intro.every((s) => s.name && s.guide === 1)).toBe(true)
   })
 
   test('depois o padrão (cola fraca) e o sorteio (sem ajuda), com cartão em cada parte', () => {
-    const steps = lessonSteps(asLesson('linhas-2'), seeded())
+    const steps = lessonSteps(asLesson('notas-4'), seeded())
     const pattern = steps.filter((s) => s.part === 'pattern')
-    expect(ids(pattern)).toEqual(upDown(['E4', 'G4', 'B4']))
+    expect(ids(pattern)).toEqual(['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5'])
     expect(pattern.every((s) => !s.name && s.guide === LESSON.patternGuide)).toBe(true)
-    expect(steps.filter((s) => s.part === 'mix').every((s) => !s.name && s.guide === 0)).toBe(true)
+    // o sorteio começa com a cola fraca, apagando, e segue sem ela
+    const mix = steps.filter((s) => s.part === 'mix')
+    const fade = mix.slice(0, LESSON.fadeNotes).map((s) => s.guide)
+    expect(fade[0]).toBeLessThan(LESSON.patternGuide)
+    for (let i = 1; i < fade.length; i++) expect(fade[i]).toBeLessThan(fade[i - 1])
+    expect(mix.slice(LESSON.fadeNotes).every((s) => !s.name && s.guide === 0)).toBe(true)
     expect(steps.filter((s) => s.card).map((s) => s.card!.title)).toEqual(['agora em ordem', 'agora sozinho'])
   })
 
   test('Desafio: sorteio sem cola, com tempo e cartão logo no começo', () => {
-    const steps = lessonSteps(asLesson('linhas-5'), seeded())
+    const steps = lessonSteps(asLesson('notas-5'), seeded())
     expect(steps).toHaveLength(LESSON.challengeNotes)
     expect(steps.every((s) => s.guide === 0 && s.timed)).toBe(true)
     expect(steps[0].card?.title).toBe('Desafio')
@@ -138,14 +146,13 @@ describe('sequência da lição de notas', () => {
   })
 
   test('o sorteio revisa as unidades anteriores, espalhado', () => {
-    expect(reviewNotes(asLesson('linhas-2'))).toEqual([])
-    const review = reviewNotes(asLesson('espacos-1'))
-    expect(review).toEqual(['E4', 'G4', 'B4', 'D5', 'F5'])
-    expect(reviewNotes(asLesson('espacos-4'))).toEqual([])
+    expect(reviewNotes(asLesson('notas-2'))).toEqual([])
+    const review = reviewNotes(asLesson('suplementares-1'))
+    expect(review).toEqual(['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5'])
     for (let seed = 1; seed < 20; seed++) {
-      const mix = ids(lessonSteps(asLesson('espacos-1'), seeded(seed)).filter((s) => s.part === 'mix'))
+      const mix = ids(lessonSteps(asLesson('suplementares-1'), seeded(seed)).filter((s) => s.part === 'mix'))
       const isReview = mix.map((id) => review.includes(id))
-      expect(isReview.filter(Boolean)).toHaveLength(Math.round(12 * LESSON.review))
+      expect(isReview.filter(Boolean)).toHaveLength(Math.round(10 * LESSON.review))
       for (let i = 1; i < mix.length; i++) expect(isReview[i] && isReview[i - 1]).toBe(false)
     }
   })
@@ -155,21 +162,31 @@ describe('sequência da lição de notas', () => {
     expect(asLesson('posicao-3').review).toEqual(['E5', 'F5', 'G5', 'B4', 'C5', 'D5'])
   })
 
-  test('bequadro: a nota natural mostra o ♮', () => {
+  test('acidente vale até a barra: a nota sem sinal herda; o ♮ e a barra desfazem', () => {
+    const steps = barSteps([['F#4', 'F4', 'F4♮', 'F4'], ['F4']], false)
+    expect(steps.map((s) => noteId(s.note))).toEqual(['F#4', 'F#4', 'F4', 'F4', 'F4'])
+    // a herdada é desenhada sem o sinal; o ♮ aparece; a barra abre o 2º compasso
+    expect(steps[1].shown && noteId(steps[1].shown)).toBe('F4')
+    expect(steps[2].natural).toBe(true)
+    expect(steps.map((s) => !!s.barStart)).toEqual([false, false, false, false, true])
+    // outra oitava não herda
+    expect(barSteps([['F#4', 'F5']], false).map((s) => noteId(s.note))).toEqual(['F#4', 'F5'])
+  })
+
+  test('a lição "Até a barra" usa compassos, e as notas herdadas contam pelo que valem', () => {
     const steps = lessonSteps(asLesson('acidentes-3'), seeded())
-    const f = steps.find((s) => noteId(s.note) === 'F4')!
-    expect(f.natural).toBe(true)
-    expect(lessonNotes(notesOf(lesson('acidentes-3'))).map(noteId)).toContain('F4')
+    expect(steps.filter((s) => s.shown).length).toBeGreaterThan(3)
+    expect(steps.filter((s) => s.card).map((s) => s.card!.title)).toEqual(['agora você'])
   })
 })
 
 describe('respostas', () => {
   test('passar: acerto mínimo; no Desafio de notas também o tempo (violão com mais folga)', () => {
-    const d = lesson('linhas-5')
+    const d = lesson('notas-5')
     expect(passes(d, { correct: 19, attempts: 20, meanTime: 1.5 })).toBe(true)
     expect(passes(d, { correct: 19, attempts: 20, meanTime: 2.5 })).toBe(false)
     expect(passes(d, { correct: 15, attempts: 20, meanTime: 1 })).toBe(false)
-    expect(passes(lesson('linhas-1'), { correct: 19, attempts: 20 })).toBe(true)
+    expect(passes(lesson('notas-1'), { correct: 19, attempts: 20 })).toBe(true)
     expect(passes(lesson('posicao-7'), { correct: 19, attempts: 20, meanTime: 2.5 })).toBe(true)
     // Desafio de ritmo: só o acerto
     expect(passes(lesson('figuras-4'), { correct: 19, attempts: 20 })).toBe(true)

@@ -411,3 +411,13 @@
     animation-duration: 0ms !important;
   }
 }
+
+/* guia: listas e ênfase no texto corrido */
+.guide-body ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.guide-body b {
+  font-weight: 600;
+  color: var(--color-text);
+}

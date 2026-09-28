@@ -104,6 +104,11 @@ export const LESSON = {
   introRepeatMany: 2,
   /** opacidade da cola na parte "em ordem" (1 na apresentação, 0 no sorteio) */
   patternGuide: 0.4,
+  /** no começo do sorteio a cola não some de uma vez: vai apagando ao longo destas notas */
+  fadeNotes: 6,
+  /** depois de um erro, a cola volta fraca nas notas seguintes e apaga de novo */
+  supportNotes: 3,
+  supportGuide: 0.3,
   /** espaço entre as notas, em espaços de pauta */
   gap: 7,
   /** tempo mostrando a resposta certa depois de um erro (s) */
@@ -123,6 +128,13 @@ export const LESSON = {
   revealTimeMic: 1.8,
   /** "treinar mais" no fim da lição */
   moreNotes: 10,
+  /** dica: aparece com 2 erros seguidos ou `tipErrors` erros nas últimas `tipWindow` respostas */
+  tipErrors: 3,
+  tipWindow: 8,
+  /** respostas mínimas entre duas dicas */
+  tipGap: 8,
+  /** a dica some depois de tantas respostas */
+  tipLasts: 4,
 } as const
 
 /** Lições e prática de ritmo. */

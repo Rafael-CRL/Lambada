@@ -197,21 +197,25 @@ export function writtenRange(scale: ScaleId): [Note, Note] {
   return [writtenFromSounding(defaultSpelling(ns[0].midi)), writtenFromSounding(defaultSpelling(ns[ns.length - 1].midi))]
 }
 
-/** Conjuntos de notas da Leitura (só a pauta, sem depender do braço). */
-export type NoteSet = 'linhas' | 'espacos' | 'suplementares' | 'todas'
+/** Conjuntos de notas da Leitura (só a pauta, sem depender do braço): um por unidade da trilha. */
+export type NoteSet = 'pauta' | 'suplementares' | 'todas'
 
 export const NOTE_SET_LABELS: Record<NoteSet, string> = {
-  linhas: 'Linhas',
-  espacos: 'Espaços',
+  pauta: 'Pauta',
   suplementares: 'Suplementares',
   todas: 'Todas',
+}
+
+/** Ajuste guardado → conjunto (linhas e espaços viraram a pauta). */
+export function noteSetOf(saved: string | undefined): NoteSet {
+  if (saved === 'linhas' || saved === 'espacos') return 'pauta'
+  return saved === 'pauta' || saved === 'suplementares' ? saved : 'todas'
 }
 
 const ALL_WRITTEN = ['E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5', 'B5', 'C6', 'D6', 'E6']
 
 export const NOTE_SETS: Record<NoteSet, string[]> = {
-  linhas: ['E4', 'G4', 'B4', 'D5', 'F5'],
-  espacos: ['F4', 'A4', 'C5', 'E5'],
+  pauta: ['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5'],
   suplementares: ['E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'G5', 'A5', 'B5', 'C6', 'D6', 'E6'],
   todas: ALL_WRITTEN,
 }

@@ -6,6 +6,7 @@ import { loadSettings, saveActivityOptions, type Settings } from '../db/db'
 import { RHYTHM_LEVELS, type RhythmLevel } from '../domain/rhythm'
 import { ControlsDock, type OptionChange } from '../exercises/ControlsDock'
 import { EMPTY_HUD, type Hud } from '../exercises/controller'
+import { onceOptions } from '../exercises/start'
 import { activity, buildConfig, type ExerciseConfig } from '../exercises/types'
 import { ConceptCards } from '../lessons/ConceptCards'
 import { accuracyOf, type LessonDef, type LessonResult } from '../lessons/lessons'
@@ -48,7 +49,7 @@ export function RhythmPractice() {
       const s = await loadSettings()
       if (cancelled) return
       setSettings(s)
-      setConfig(buildConfig('rhythm', s.activities.rhythm, s.scale))
+      setConfig(buildConfig('rhythm', { ...s.activities.rhythm, ...onceOptions('rhythm') }, s.scale))
       if (isAudioRunning() || (await ensureAudioRunning())) {
         if (!cancelled) setPhase('running')
       } else if (!cancelled) setPhase('needs-gesture')

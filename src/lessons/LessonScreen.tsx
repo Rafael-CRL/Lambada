@@ -5,13 +5,14 @@ import { Microphone } from '../audio/microphone'
 import { LESSON } from '../config'
 import { loadSettings, saveLessonResult, type Settings } from '../db/db'
 import { EMPTY_HUD, type Hud } from '../exercises/controller'
-import { startActivity, startLesson } from '../exercises/start'
-import type { Timbre } from '../exercises/types'
+import { startActivity, startLesson, startPractice } from '../exercises/start'
+import { activity, TOPIC_TITLE, type Timbre } from '../exercises/types'
 import { Button, cx, ProgressBar } from '../ui/controls'
-import { IconArrowRight, IconHelp, IconPlay, IconRedo, IconX } from '../ui/icons'
+import { IconArrowRight, IconBook, IconHelp, IconPlay, IconRedo, IconX } from '../ui/icons'
 import { ConceptCards } from './ConceptCards'
+import { guideOf } from './guides'
 import { lesson, nextLesson, unitOf } from './curriculum'
-import { accuracyOf, challengeTime, passes, seconds, type LessonResult, type Segment } from './lessons'
+import { accuracyOf, challengeTime, passes, seconds, type LessonResult, type Practice, type Segment } from './lessons'
 import { NotesSegment } from './NotesSegment'
 import { RhythmSegment } from './RhythmSegment'
 import { ScoreSegment } from './ScoreSegment'
@@ -128,6 +129,11 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
   // depois da última lição, a trilha desemboca na prática livre
   const goNext = () => (next ? startLesson(next.id, true) : startActivity(unit.topic === 'teoria' ? 'reading' : 'notes', true))
   const passed = result ? passes(def, result) : false
+  const guide = guideOf(unit.id)
+  const openGuide = () => navigate({ name: 'guide', unit: unit.id })
+  // Desafio que falhou só pelo tempo: o próximo passo é treinar, não repetir
+  const slow = !!def.challenge && !!result && !passed && accuracyOf(result) >= LESSON.pass
+  const practice = def.challenge ? unit.practice : undefined
   const canMore = !!handle.current?.more
   const trainMore = () => {
     // o "+" soma ao resultado do último segmento, que continua na mesma tela
@@ -145,7 +151,7 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
         leave()
       } else if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement) && phase !== 'between') {
         if (phase === 'needs-gesture') void beginAfterGesture()
-        else if (phase === 'done') (passed ? goNext : again)()
+        else if (phase === 'done') slow && practice ? startPractice(practice, true) : (passed ? goNext : again)()
       } else if (phase === 'between' && !e.repeat && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
         e.stopImmediatePropagation()
@@ -221,6 +227,7 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
       {(phase === 'cards' || help) && def.cards && (
         <ConceptCards
           ids={def.cards}
+          onGuide={guide ? openGuide : undefined}
           onClose={() => {
             if (help) setHelp(false)
             else setPhase('running')
@@ -262,28 +269,51 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
                   {limit !== null && result.meanTime !== undefined && <span className="tabular font-mono text-sm text-text">{seconds(result.meanTime)} por nota</span>}
                   <span className="text-sm text-sub">{status(def.challenge, limit, result, passed)}</span>
                 </div>
-                <Button variant="primary" className="w-full" onClick={passed ? goNext : again} autoFocus>
-                  {passed ? (
-                    <>
-                      {nextLabel} <IconArrowRight />
-                    </>
-                  ) : (
-                    <>
-                      <IconRedo /> de novo
-                    </>
-                  )}
-                </Button>
+                {slow && practice ? (
+                  <>
+                    <p className="text-base text-text">{practiceText('slow')}</p>
+                    <Button variant="primary" className="w-full" onClick={() => startPractice(practice, true)} autoFocus>
+                      treinar em {practiceName(practice)} <IconArrowRight />
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="primary" className="w-full" onClick={passed ? goNext : again} autoFocus>
+                    {passed ? (
+                      <>
+                        {nextLabel} <IconArrowRight />
+                      </>
+                    ) : (
+                      <>
+                        <IconRedo /> de novo
+                      </>
+                    )}
+                  </Button>
+                )}
+                {practice && !slow && (
+                  <div className="flex w-full flex-col items-center gap-3 rounded-xl border border-line p-4">
+                    <p className="text-base text-text">{practiceText(passed ? 'passed' : 'missed')}</p>
+                    <Button className="w-full" onClick={() => startPractice(practice, true)}>
+                      treinar em {practiceName(practice)} <IconArrowRight />
+                    </Button>
+                    {!passed && guide && (
+                      <button type="button" onClick={openGuide} className="flex items-center gap-1.5 text-sm text-sub hover:text-text">
+                        <IconBook /> ou reler a teoria no guia
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="flex w-full gap-2">
-                  {canMore && (
+                  {canMore && !def.challenge && (
                     <Button className="flex-1" onClick={trainMore}>
                       + {LESSON.moreNotes}
                     </Button>
                   )}
-                  {passed ? (
+                  {passed || slow ? (
                     <Button className="flex-1" onClick={again}>
                       <IconRedo /> de novo
                     </Button>
-                  ) : (
+                  ) : null}
+                  {!passed && (
                     <Button className="flex-1" onClick={goNext} title={nextLabel}>
                       próxima <IconArrowRight />
                     </Button>
@@ -299,6 +329,22 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
       )}
     </div>
   )
+}
+
+/** "Praticar › Leitura" */
+function practiceName(p: Practice): string {
+  const a = activity(p.activity)
+  return `${TOPIC_TITLE[a.topic]} › ${a.title}`
+}
+
+/**
+ * Depois do Desafio: onde continuar treinando o que a unidade ensinou. Uma
+ * vez não fixa; a prática livre fica fora da trilha e o aluno precisa saber.
+ */
+function practiceText(outcome: 'passed' | 'missed' | 'slow'): string {
+  if (outcome === 'slow') return 'Você acertou o bastante, mas passou do tempo. A leitura fica rápida com repetição: treine um pouco todo dia na prática livre.'
+  if (outcome === 'missed') return 'Treine sem pressa na prática livre e volte ao Desafio quando quiser.'
+  return 'Para não esquecer, volte a treinar de vez em quando na prática livre.'
 }
 
 function SegmentView({ segment, ...props }: { segment: Segment } & Omit<SegmentProps<never>, 'body'>) {

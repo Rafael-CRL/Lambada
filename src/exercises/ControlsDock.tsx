@@ -179,7 +179,7 @@ export function ControlsDock({
               label="Notas"
               value={config.notes ?? 'todas'}
               onChange={(notes) => onChange({ notes })}
-              options={(['linhas', 'espacos', 'suplementares', 'todas'] as const).map((v) => ({ value: v, label: NOTE_SET_LABELS[v] }))}
+              options={(['pauta', 'suplementares', 'todas'] as const).map((v) => ({ value: v, label: NOTE_SET_LABELS[v] }))}
             />
           )}
           {open === 'region' && (

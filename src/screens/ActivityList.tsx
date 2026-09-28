@@ -1,12 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef } from 'react'
+import { navigate } from '../app/router'
 import { loadTrail, type TrailProgress } from '../db/db'
-import { startActivity, startLesson } from '../exercises/start'
-import { ACTIVITIES, TOPIC_TITLE, type Topic } from '../exercises/types'
+import { startActivity, startLesson, startPractice } from '../exercises/start'
+import { activity, ACTIVITIES, TOPIC_TITLE, type Topic } from '../exercises/types'
 import { topicUnits } from '../lessons/curriculum'
+import { guideOf } from '../lessons/guides'
 import { seconds, type UnitDef } from '../lessons/lessons'
 import { cx } from '../ui/controls'
-import { IconArrowRight } from '../ui/icons'
+import { IconArrowRight, IconBook } from '../ui/icons'
 
 const ROW = 'group flex w-full items-center justify-between gap-4 px-5 py-4 text-left'
 
@@ -23,7 +25,8 @@ export function unitNext(u: UnitDef, trail: TrailProgress) {
 
 /**
  * Lista curta do tópico. Clicar = começar. Teoria: as unidades da trilha, a
- * atual em destaque. Violão: a trilha e as atividades. Pauta: as atividades.
+ * atual em destaque, e o caminho para a prática livre. Violão: a trilha e
+ * as atividades. Praticar: as atividades.
  */
 export function ActivityList({ topic }: { topic: Topic }) {
   const items = ACTIVITIES.filter((a) => a.topic === topic && !a.hidden)
@@ -33,6 +36,7 @@ export function ActivityList({ topic }: { topic: Topic }) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-6 py-8">
       <h1 className="text-3xl font-semibold tracking-tight">{TOPIC_TITLE[topic]}</h1>
+      {topic === 'teoria' && <PracticeBar />}
       <div className="flex flex-col gap-3">
         {units.map((u, i) => (
           <UnitCard key={u.id} unit={u} index={units.length > 1 ? i + 1 : null} trail={trail} current={u === current} />
@@ -50,6 +54,21 @@ export function ActivityList({ topic }: { topic: Topic }) {
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+/** Quem segue a trilha precisa saber que a prática livre existe (e que não precisa voltar às lições para treinar). */
+function PracticeBar() {
+  const list = ACTIVITIES.filter((a) => a.topic === 'pauta' && !a.hidden)
+  return (
+    <div className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line px-4 py-3 text-sm">
+      <span className="text-sub">Treinar à vontade, fora da trilha:</span>
+      {list.map((a) => (
+        <button key={a.id} type="button" onClick={() => startActivity(a.id)} title={`${TOPIC_TITLE.pauta} › ${a.title}`} className="rounded-md font-medium text-accent hover:underline">
+          {a.title}
+        </button>
+      ))}
     </div>
   )
 }
@@ -99,6 +118,26 @@ function UnitCard({ unit, index, trail, current }: { unit: UnitDef; index: numbe
           )
         })}
         <span className="ml-2 truncate text-xs text-sub">{next ? next.title : doneText(challenge ? trail[challenge.id]?.bestTime : undefined)}</span>
+        {guideOf(unit.id) && (
+          <button
+            type="button"
+            onClick={() => navigate({ name: 'guide', unit: unit.id })}
+            title="Ler a teoria da unidade com calma"
+            className={cx('flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs text-sub hover:bg-surface-2 hover:text-text', !done && 'ml-auto')}
+          >
+            <IconBook /> guia
+          </button>
+        )}
+        {done && unit.practice && (
+          <button
+            type="button"
+            onClick={() => startPractice(unit.practice!)}
+            title={`Continuar treinando em ${activity(unit.practice.activity).title}`}
+            className="ml-auto shrink-0 rounded-md px-2 py-1 text-xs text-accent hover:bg-surface-2"
+          >
+            treinar em {activity(unit.practice.activity).title} →
+          </button>
+        )}
       </div>
     </div>
   )
