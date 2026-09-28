@@ -1,6 +1,6 @@
 # Notas do projeto (para quem for mexer no código)
 
-Contexto e decisões que não aparecem no código. Leia antes de propor mudanças.
+Contexto e decisões que não aparecem no código. Leia antes de propor mudanças. Para onde o produto vai (prática de técnica de violão clássico em partitura, com retorno em tempo real): [VISAO.md](VISAO.md).
 
 ## Produto
 
