@@ -3,7 +3,7 @@ import { RHYTHM_LEVELS, type Meter } from '../domain/rhythm'
 import { NOTE_SET_LABELS, SCALE_LABELS, type NoteSet, type ScaleId } from '../domain/scales'
 import { cx, Segmented, Stepper } from '../ui/controls'
 import { IconFrets, IconHourglass, IconLines, IconMetronome, IconNote, IconSpeaker, IconStaffMap } from '../ui/icons'
-import { TIMED_SECONDS, type Control, type Duration, type ExerciseConfig, type Tempo, type Timbre } from './types'
+import { ALL_STRINGS, TIMED_SECONDS, type Control, type Duration, type ExerciseConfig, type Tempo, type Timbre } from './types'
 
 export interface OptionChange {
   tempo?: Tempo
@@ -14,6 +14,7 @@ export interface OptionChange {
   accidentals?: boolean
   scale?: ScaleId
   notes?: NoteSet
+  strings?: number[]
   meter?: Meter
 }
 
@@ -182,6 +183,7 @@ export function ControlsDock({
               options={(['pauta', 'suplementares', 'todas'] as const).map((v) => ({ value: v, label: NOTE_SET_LABELS[v] }))}
             />
           )}
+          {open === 'strings' && <StringsPicker value={config.strings ?? ALL_STRINGS} onChange={(strings) => onChange({ strings })} />}
           {open === 'region' && (
             <Segmented<ScaleId>
               label="Região"
@@ -229,12 +231,45 @@ export function ControlsDock({
             return button(c, 'Região do braço', <IconFrets />)
           case 'notes':
             return button(c, 'Notas', <IconLines />)
+          case 'strings':
+            return button(c, 'Cordas', <IconFrets />)
           case 'figures':
             return button(c, 'Figuras', <IconNote />)
           case 'meter':
             return button(c, 'Compasso', <span className="font-mono text-xs leading-none">{config.meter ?? 4}/4</span>)
         }
       })}
+    </div>
+  )
+}
+
+/**
+ * Cordas do violão. Com todas ligadas, tocar numa escolhe só ela (o caso
+ * comum: treinar uma corda); depois cada toque liga ou desliga (pelo menos
+ * uma fica). "todas" volta ao braço inteiro.
+ */
+function StringsPicker({ value, onChange }: { value: number[]; onChange: (strings: number[]) => void }) {
+  const all = value.length === ALL_STRINGS.length
+  const toggle = (n: number) => {
+    if (all) return onChange([n])
+    const next = value.includes(n) ? value.filter((s) => s !== n) : [...value, n].sort((a, b) => a - b)
+    if (next.length) onChange(next)
+  }
+  const item = (pressed: boolean, label: string) =>
+    cx('min-h-10 rounded-md px-3 text-sm font-medium transition-colors duration-150', pressed ? 'bg-surface-2 text-text' : 'text-sub hover:text-text', label)
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div role="group" aria-label="Cordas" className="inline-flex gap-0.5 rounded-lg bg-surface p-1">
+        {ALL_STRINGS.map((n) => (
+          <button key={n} type="button" aria-pressed={!all && value.includes(n)} onClick={() => toggle(n)} className={item(!all && value.includes(n), 'tabular')}>
+            {n}ª
+          </button>
+        ))}
+        <button type="button" aria-pressed={all} onClick={() => onChange(ALL_STRINGS)} className={item(all, '')}>
+          todas
+        </button>
+      </div>
+      <span className="text-xs text-sub">cordas: {all ? 'todas' : value.map((n) => `${n}ª`).join(', ')}</span>
     </div>
   )
 }

@@ -14,13 +14,13 @@ import { MicMeter } from './MicMeter'
 import { Countdown, FeedbackLine, FretHint } from './parts'
 import { NoteButtons } from './NoteButtons'
 import { ScoreController } from './score'
-import { NOTE_SETS, writtenRange } from '../domain/scales'
+import { NOTE_SETS, scaleItems, writtenRange } from '../domain/scales'
 import { parseNote } from '../domain/notes'
 import { staffStep } from '../domain/staff'
 import { NoteMap, type MapReach } from '../staff/NoteMap'
 import { StaffStage } from './stage'
 import { onceOptions, restartActivity } from './start'
-import { activity, buildConfig, type ActivityId, type ExerciseConfig } from './types'
+import { activity, ALL_STRINGS, buildConfig, type ActivityId, type ExerciseConfig } from './types'
 
 type Phase = 'loading' | 'needs-gesture' | 'mic-error' | 'running' | 'paused'
 
@@ -40,10 +40,10 @@ async function saveResult(session: StudySession, completed: boolean, extra?: Par
 }
 
 /** Ajustes que mudam a partitura: reiniciam a sessão. Os demais valem na hora. */
-const RESTARTS: (keyof OptionChange)[] = ['tempo', 'level', 'duration', 'scale', 'notes']
+const RESTARTS: (keyof OptionChange)[] = ['tempo', 'level', 'duration', 'scale', 'notes', 'strings']
 
 function pickOptions(c: ExerciseConfig) {
-  return { tempo: c.tempo, bpm: c.bpm, level: c.level, duration: c.duration, timbre: c.timbre, accidentals: c.accidentals, notes: c.notes ?? 'todas' }
+  return { tempo: c.tempo, bpm: c.bpm, level: c.level, duration: c.duration, timbre: c.timbre, accidentals: c.accidentals, notes: c.notes ?? 'todas', strings: c.strings ?? ALL_STRINGS }
 }
 
 export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
@@ -67,16 +67,23 @@ export function ExerciseScreen({ activityId }: { activityId: ActivityId }) {
   const [mapReach, setMapReach] = useState<MapReach>(12)
   const toggleMap = useCallback(() => setMapOpen((v) => !v), [])
   const scale = config?.scale ?? 'solta'
-  // região praticada: o conjunto de notas da Leitura, ou a região do violão (o resto fica apagado na cola)
+  // região praticada: o conjunto de notas da Leitura, as cordas escolhidas ou a região do violão (o resto fica apagado na cola)
   const noteSet = config?.notes
+  const strings = config?.strings
   const region = useMemo<[number, number]>(() => {
     if (noteSet) {
       const steps = NOTE_SETS[noteSet].map((id) => staffStep(parseNote(id)))
       return [Math.min(...steps), Math.max(...steps)]
     }
+    if (strings && strings.length < ALL_STRINGS.length) {
+      const steps = scaleItems(scale, false)
+        .filter((i) => strings.includes(i.position.string))
+        .map((i) => staffStep(i.written))
+      return [Math.min(...steps), Math.max(...steps)]
+    }
     const [lo, hi] = writtenRange(scale)
     return [staffStep(lo), staffStep(hi)]
-  }, [scale, noteSet])
+  }, [scale, noteSet, strings])
   const leaving = useRef(false)
   // cartões de conceito (Escala): sozinhos na primeira vez, depois pelo "?"
   const [help, setHelp] = useFirstCards(activityId, def.cards)

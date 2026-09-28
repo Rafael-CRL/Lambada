@@ -20,7 +20,7 @@ export type Duration = 'infinite' | 'short' | 'long' | 'timed'
 export type Timbre = 'piano' | 'guitar' | 'off'
 
 /** Botões de ajuste que uma atividade mostra no canto. */
-export type Control = 'tempo' | 'bpm' | 'duration' | 'sound' | 'accidentals' | 'region' | 'map' | 'notes' | 'figures' | 'meter'
+export type Control = 'tempo' | 'bpm' | 'duration' | 'sound' | 'accidentals' | 'region' | 'map' | 'notes' | 'strings' | 'figures' | 'meter'
 
 /** Ajustes guardados por atividade. */
 export interface ActivityOptions {
@@ -32,8 +32,18 @@ export interface ActivityOptions {
   accidentals: boolean
   /** Leitura: quais notas */
   notes: NoteSet
+  /** Violão (Notas): quais cordas */
+  strings: number[]
   /** Ritmo: pulsos por compasso */
   meter: Meter
+}
+
+export const ALL_STRINGS = [1, 2, 3, 4, 5, 6]
+
+/** Cordas guardadas → lista válida em ordem (vazia ou inválida = todas). */
+export function stringsOf(saved: unknown): number[] {
+  const list = Array.isArray(saved) ? ALL_STRINGS.filter((n) => saved.includes(n)) : []
+  return list.length ? list : ALL_STRINGS
 }
 
 export interface ActivityDef {
@@ -51,7 +61,7 @@ export interface ActivityDef {
   cards?: string[]
 }
 
-const BASE: ActivityOptions = { tempo: 'free', bpm: 60, level: 1, duration: 'infinite', timbre: 'piano', accidentals: false, notes: 'todas', meter: 4 }
+const BASE: ActivityOptions = { tempo: 'free', bpm: 60, level: 1, duration: 'infinite', timbre: 'piano', accidentals: false, notes: 'todas', strings: ALL_STRINGS, meter: 4 }
 
 export const ACTIVITIES: ActivityDef[] = [
   {
@@ -104,7 +114,7 @@ export const ACTIVITIES: ActivityDef[] = [
     hint: 'leia a nota na pauta e toque no violão',
     input: 'mic',
     content: 'random',
-    controls: ['map', 'tempo', 'duration', 'accidentals'],
+    controls: ['map', 'strings', 'tempo', 'duration', 'accidentals'],
     defaults: BASE,
   },
   {
@@ -151,6 +161,8 @@ export interface ExerciseConfig {
   bars?: number
   /** lições: só estas notas (ids escritos) */
   pool?: string[]
+  /** Violão (Notas): só as notas destas cordas */
+  strings?: number[]
   /** Ritmo: pulsos por compasso */
   meter?: Meter
 }
@@ -173,6 +185,7 @@ export function buildConfig(id: ActivityId, saved: Partial<ActivityOptions> | un
     accidentals: def.controls.includes('accidentals') && o.accidentals,
     timbre: def.input === 'buttons' ? o.timbre : 'off',
     notes: def.controls.includes('notes') ? noteSetOf(o.notes) : undefined,
+    strings: def.controls.includes('strings') ? stringsOf(o.strings) : undefined,
     meter: def.controls.includes('meter') ? o.meter : undefined,
   }
 }

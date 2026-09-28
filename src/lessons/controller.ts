@@ -40,14 +40,17 @@ interface Slot extends LessonStep {
   carded?: boolean
   /** o aluno pediu a cola: não conta, e no sorteio volta depois */
   helped?: boolean
+  /** violão: já errou esta nota (conta um erro só; ela espera a certa) */
+  missed?: boolean
   /** barra de compasso antes da nota */
   bar?: StageNote
 }
 
 /**
  * Uma lição de notas: semibreves em fila, sem compasso. A nota na linha
- * espera a resposta (botão ou o violão); errou, mostra a certa
- * (nome e lugar), espera um pouco e segue. No sorteio, a nota errada volta
+ * espera a resposta (botão ou o violão). Nos botões, errou: mostra a certa
+ * (nome e lugar), espera um pouco e segue. No violão, errou: mostra onde fica
+ * no braço e espera a certa (tocar a certa é o treino). No sorteio, a nota errada volta
  * algumas notas depois, com a cola acesa só para ela. Entre as partes, um
  * cartão espera qualquer tecla. Errando muito, uma dica lembra a regra.
  */
@@ -171,14 +174,16 @@ export class LessonController {
 
   private judge(s: Slot, result: AttemptResult, now: number, playedWrittenMidi?: number): AttemptResult {
     const ok = result === 'correct'
-    if (s.timed) this.times.push(Math.max(0, now - this.readyAt))
-    if (!s.name && !s.helped) {
+    const first = !s.missed
+    // o violão espera a certa: o tempo vai até ela; nos botões, até a resposta
+    if (s.timed && (ok || !this.mic)) this.times.push(Math.max(0, now - this.readyAt))
+    if (!s.name && !s.helped && first) {
       this.attempts++
       if (ok) this.correct++
     }
     if (ok) {
       if (s.helped && s.part === 'mix') this.retry(s)
-      s.sn?.setState('ok')
+      s.sn?.setState(first ? 'ok' : null)
       this.feedback('ok', '')
       this.d.setFret?.(null)
       this.advance(now)
@@ -190,9 +195,12 @@ export class LessonController {
       this.d.guide?.show(s.guide, step)
       if (playedWrittenMidi !== undefined) this.micMistake(s, playedWrittenMidi, result)
       else this.feedback('err', label, placeName(step))
-      if (s.part === 'mix') this.retry(s)
+      // no violão a nota com a cola já volta quando for acertada
+      if (s.part === 'mix' && first && !(this.mic && s.helped)) this.retry(s)
       if (this.guided) this.support = LESSON.supportNotes
-      this.holdUntil = now + (this.mic ? LESSON.revealTimeMic : LESSON.revealTime)
+      s.missed = true
+      // violão: a nota fica esperando a certa, com o braço à vista
+      if (!this.mic) this.holdUntil = now + LESSON.revealTime
     }
     this.hud()
     return result
@@ -256,12 +264,14 @@ export class LessonController {
     if (s.isNew) this.feedback('info', namePt(s.note), placeName(staffStep(s.note)))
   }
 
-  /** "Ver a cola": acende a cola inteira para a nota da vez. Ela não conta e, no sorteio, volta depois. */
+  /** "Ver a cola": acende a cola inteira para a nota da vez (no violão, também o braço). Ela não conta e, no sorteio, volta depois. */
   help() {
     const s = this.ready()
     if (!s || !this.guided || s.name) return
     s.helped = true
     this.d.guide?.show(1, null)
+    // no violão o que falta é o lugar no braço, não o nome
+    if (this.mic) this.showFret(s.note)
   }
 
   /** Fecha o cartão e segue a lição (qualquer tecla, clique ou nota). */

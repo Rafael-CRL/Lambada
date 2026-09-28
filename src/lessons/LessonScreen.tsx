@@ -3,7 +3,7 @@ import { navigate } from '../app/router'
 import { ensureAudioRunning, isAudioRunning } from '../audio/clock'
 import { Microphone } from '../audio/microphone'
 import { LESSON } from '../config'
-import { loadSettings, saveLessonResult, type Settings } from '../db/db'
+import { cardsSeen, loadSettings, loadTrail, markCardsSeen, saveLessonResult, type Settings } from '../db/db'
 import { EMPTY_HUD, type Hud } from '../exercises/controller'
 import { startActivity, startLesson, startPractice } from '../exercises/start'
 import { activity, TOPIC_TITLE, type Timbre } from '../exercises/types'
@@ -69,14 +69,22 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
   const hasCards = !!def.cards?.length
   const segment = def.segments[seg]
 
+  // cartões de conceito: sozinhos só na primeira vez (reiniciar ou refazer vai direto ao exercício); o "?" reabre
+  const [firstCards, setFirstCards] = useState(false)
+  const cardsKey = `lesson:${lessonId}`
+
   // ajustes e microfone; depois, o áudio e os cartões
   useEffect(() => {
     let cancelled = false
     let opened: Microphone | null = null
     void (async () => {
-      const s = await loadSettings()
+      const [s, seen, trail] = await Promise.all([loadSettings(), cardsSeen(cardsKey), loadTrail()])
       if (cancelled) return
       setSettings(s)
+      // quem já fez a lição (antes de os cartões serem lembrados) também já viu
+      const showCards = hasCards && !seen && !trail[lessonId]
+      setFirstCards(showCards)
+      if (showCards) void markCardsSeen(cardsKey)
       if (needsMic) {
         try {
           opened = await Microphone.open(s.audioDeviceId, s.latencyMs)
@@ -90,17 +98,17 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
         setMic(opened)
       }
       if (isAudioRunning() || (await ensureAudioRunning())) {
-        if (!cancelled) setPhase(hasCards ? 'cards' : 'running')
+        if (!cancelled) setPhase(showCards ? 'cards' : 'running')
       } else if (!cancelled) setPhase('needs-gesture')
     })()
     return () => {
       cancelled = true
       opened?.close()
     }
-  }, [needsMic, hasCards])
+  }, [needsMic, hasCards, cardsKey, lessonId])
 
   const beginAfterGesture = async () => {
-    if (await ensureAudioRunning()) setPhase(hasCards ? 'cards' : 'running')
+    if (await ensureAudioRunning()) setPhase(firstCards ? 'cards' : 'running')
   }
 
   const finishSegment = useCallback(

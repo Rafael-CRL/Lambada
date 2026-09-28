@@ -257,14 +257,57 @@ describe('lição de notas', () => {
     expect(t.fret()).toMatchObject({ target: { string: 1, fret: 0 } })
     t.play(midiOf(t.head()))
     expect(t.c.answered).toBe(1)
-    // oitava errada: mostra o braço com a tocada e espera mais que nos botões
+    // oitava errada: mostra o braço com a tocada e espera a certa (não segue sozinha)
     t.tick(0.02)
     t.play(midiOf(t.head()) - 12)
     expect(t.notes.some((n) => n.state === 'oct')).toBe(true)
     expect(t.fret()).toMatchObject({ played: expect.anything() })
-    t.tick(LESSON.revealTime + 0.05)
+    t.tick(5)
     expect(t.c.answered).toBe(1)
-    t.tick(LESSON.revealTimeMic)
+    expect(t.fret()).not.toBeNull()
+    t.play(midiOf(t.head()))
     expect(t.c.answered).toBe(2)
+    // a próxima da apresentação mostra o lugar dela, sem a tocada
+    expect(t.fret()).toMatchObject({ played: null })
+  })
+
+  test('violão: errou no sorteio, espera a certa; conta um erro só e a nota volta uma vez', () => {
+    const t = setup('posicao-7', true)
+    t.tick(0.02)
+    t.play(midiOf(t.head())) // fecha o cartão do Desafio
+    t.tick(0.02)
+    const missed = noteId(t.head())
+    const before = t.c.total
+    t.play(midiOf(t.head()) + 1)
+    t.tick(0.02)
+    t.play(midiOf(t.head()) + 2)
+    expect(t.c.answered).toBe(0)
+    expect(t.c.total).toBe(before + 1)
+    t.tick(0.02)
+    t.play(midiOf(t.head()))
+    expect(t.c.answered).toBe(1)
+    for (let guard = 0; t.c.target && guard < 100; guard++) {
+      t.tick(0.1)
+      t.play(midiOf(t.head()))
+    }
+    t.tick(1)
+    const r = t.result()!
+    expect(r.attempts).toBe(t.c.total)
+    expect(r.correct).toBe(t.c.total - 1)
+    expect(t.notes.filter((n) => noteId(n.note) === missed).length).toBeGreaterThan(1)
+  })
+
+  test('violão: a cola mostra onde fica no braço', () => {
+    const t = setup('posicao-1', true)
+    // apresentação: toca as notas com nome até o cartão "agora em ordem"
+    for (let guard = 0; !t.card() && guard < 20; guard++) {
+      t.tick(0.02)
+      t.play(midiOf(t.head()))
+    }
+    t.c.dismissCard()
+    expect(t.fret()).toBeNull()
+    t.tick(0.02)
+    t.c.help()
+    expect(t.fret()).toMatchObject({ target: { string: 1 } })
   })
 })

@@ -112,7 +112,11 @@ export function NotesSegment({ lesson, body, mic, timbre, paused, hud, setHud, o
           type="button"
           onClick={() => ctrl.current?.help()}
           disabled={paused}
-          title="Mostra os nomes das linhas e espaços nesta nota (ela não conta e volta depois)"
+          title={
+            useMic
+              ? 'Mostra onde fica no braço e os nomes das linhas e espaços nesta nota (ela não conta e volta depois)'
+              : 'Mostra os nomes das linhas e espaços nesta nota (ela não conta e volta depois)'
+          }
           className="mx-auto flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-sub hover:bg-surface hover:text-text"
         >
           <IconStaffMap /> ver a cola <Kbd>H</Kbd>

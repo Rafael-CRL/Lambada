@@ -124,8 +124,6 @@ export const LESSON = {
   challengeTime: 2,
   /** no violão (achar a casa e tocar leva mais tempo) */
   challengeTimeMic: 3,
-  /** com o microfone, a resposta certa fica à vista mais tempo (dá para ver o braço) */
-  revealTimeMic: 1.8,
   /** "treinar mais" no fim da lição */
   moreNotes: 10,
   /** dica: aparece com 2 erros seguidos ou `tipErrors` erros nas últimas `tipWindow` respostas */

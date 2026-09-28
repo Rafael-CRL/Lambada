@@ -6,12 +6,13 @@ import { NotePicker } from './picker'
 
 /**
  * Notas da sessão: na Leitura, o conjunto escolhido (ou o das lições); no
- * violão, as da região, filtradas pelas da lição quando houver.
+ * violão, as da região, filtradas pelas da lição ou pelas cordas escolhidas.
  */
 export function sessionItems(config: ExerciseConfig, scale: ScaleId, accidentals: boolean): StudyItem[] {
   if (inputOf(config) === 'buttons' && (config.pool || config.notes)) return readingItems(config.pool ?? NOTE_SETS[config.notes!], accidentals)
   const items = unlockOrder(scaleItems(scale, accidentals))
-  return config.pool ? items.filter((i) => config.pool!.includes(i.id)) : items
+  if (config.pool) return items.filter((i) => config.pool!.includes(i.id))
+  return config.strings ? items.filter((i) => config.strings!.includes(i.position.string)) : items
 }
 
 /**

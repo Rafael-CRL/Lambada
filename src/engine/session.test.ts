@@ -2,7 +2,8 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, test } from 'vitest'
 import { db } from '../db/db'
 import { buildConfig } from '../exercises/types'
-import { StudySession } from './session'
+import { STRING_NOTES } from '../lessons/curriculum'
+import { sessionItems, StudySession } from './session'
 
 const config = buildConfig('reading', undefined, 'solta')
 
@@ -68,5 +69,22 @@ describe('sessão', () => {
     const s = await StudySession.open(config, 'fechada', true)
     expect(await s.finish(true)).toBeNull()
     expect(await db.sessions.count()).toBe(0)
+  })
+})
+
+describe('Notas do violão: cordas', () => {
+  test('sem escolha, as 17 naturais da 1ª posição; com cordas, só as delas', () => {
+    expect(sessionItems(buildConfig('notes', undefined, 'solta'), 'solta', false)).toHaveLength(17)
+    const five = sessionItems(buildConfig('notes', { strings: [5] }, 'solta'), 'solta', false)
+    expect(five.map((i) => i.id).sort()).toEqual([...STRING_NOTES[5]].sort())
+    const bass = sessionItems(buildConfig('notes', { strings: [4, 5, 6] }, 'solta'), 'solta', false)
+    expect(bass.map((i) => i.id).sort()).toEqual([4, 5, 6].flatMap((n) => STRING_NOTES[n]).sort())
+    // com ♯♭, os acidentes daquelas cordas
+    expect(sessionItems(buildConfig('notes', { strings: [1] }, 'solta'), 'solta', true).every((i) => i.position.string === 1)).toBe(true)
+  })
+
+  test('cordas guardadas inválidas valem como todas', () => {
+    expect(buildConfig('notes', { strings: [] }, 'solta').strings).toEqual([1, 2, 3, 4, 5, 6])
+    expect(buildConfig('reading', undefined, 'solta').strings).toBeUndefined()
   })
 })
