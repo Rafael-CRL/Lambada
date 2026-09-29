@@ -45,7 +45,7 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 - **Leitura com botões: errou, mostra a certa e segue.** O violão (Notas) espera a nota certa: tocar a certa é o treino.
 - **Leitura, ajuste "Notas":** pauta (as 9 notas), suplementares ou todas (Mi3 a Mi6), um por unidade da trilha. É o treino depois de cada unidade, sem modo novo. "Linhas"/"Espaços" guardados viram "Pauta" (`noteSetOf`).
 
-## Princípios (o usuário insistiu nisso)
+## Princípios
 
 - **Sem redundância.** Uma variação vira opção de uma atividade existente (`ACTIVITIES` em `src/exercises/types.ts` + `ControlsDock`), nunca um modo novo. Já foram removidos, por serem redundantes: esteira contínua/espera, sprint, BPM, "No tempo", adaptativo e a tela de opções antes de começar.
 - **Pouco texto, revelação gradual.** Se precisa de parágrafo explicando, o desenho está errado.
@@ -53,13 +53,6 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 - **Nada de bloquear conteúdo.** Gamificar é para acelerar o aprendizado, não para atrapalhar quem já sabe. O desbloqueio progressivo de notas está **desligado**.
 - **Região fixa em Solta** (casas 0–3). O ajuste Solta/Fechada foi tirado porque o microfone não distingue a corda, só a altura.
 - **Numa tela grande, pauta e botões juntos no meio** (perto do olho e do mouse); no celular, botões no rodapé (`ExerciseBody` em `src/exercises/parts.tsx`).
-
-## Como trabalhar com o usuário
-
-- Português, respostas diretas.
-- **Pedido grande ou ambíguo: perguntar antes de construir** (uma rodada de perguntas numeradas com recomendação). Adivinhar causou três redesenhos seguidos. Quando ele dá liberdade, decidir e só perguntar o que for realmente importante.
-- Commit só quando pedido. O primeiro commit está sem linha de coautor, a pedido dele.
-- **Antes de chamar algo de bug, olhar os dados reais.** O caso do "erro de oitava" era leitura: Sol5 (acima da pauta) ≠ Sol4 (2ª linha, 3ª corda solta). O IndexedDB do usuário em `localhost:5173` mostrou isso.
 
 ## Domínio (o que confunde)
 

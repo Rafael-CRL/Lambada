@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
+  // caminhos relativos: o build roda em qualquer subpasta (GitHub Pages)
+  base: './',
   plugins: [react(), tailwindcss()],
   server: {
     host: '0.0.0.0',
