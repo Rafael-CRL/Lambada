@@ -4,6 +4,8 @@ Leitura de partitura e prática de violão clássico, com retorno em tempo real 
 
 Você lê a nota na pauta, toca no violão e o app ouve e responde na hora: no braço, na pauta e no tempo.
 
+**Demo:** https://rafael-crl.github.io/Lambada/
+
 ## O que tem
 
 - **Teoria musical:** trilha guiada do zero (notas na pauta, figuras, compasso, pausas, acidentes) com cartões, guias e desafios.
