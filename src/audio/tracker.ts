@@ -58,6 +58,8 @@ export class NoteTracker {
   private meter = 0
   /** ruído de fundo estimado (RMS); null = ainda não medido */
   private floor: number | null = null
+  /** a última leitura foi zero exato */
+  private digitalSilence = false
   /** nível de fim de nota desta leitura */
   private release = 0
   /**
@@ -82,6 +84,7 @@ export class NoteTracker {
     this.heldMidi = null
     this.misses = 0
     this.floor = null
+    this.digitalSilence = false
   }
 
   /** Processa uma leitura. `time` = instante da última amostra do buffer. */
@@ -99,10 +102,21 @@ export class NoteTracker {
     // Uma travada longa (aba em segundo plano) não conta como tempo de subida:
     // senão o ruído pula para o nível da nota que estiver soando.
     const rise = this.p.floorRise * Math.min(dt, 0.1)
-    // (com piso: silêncio digital, zero exato, não pode travar a subida em zero)
-    const floor = this.floor === null || recent < this.floor ? recent : Math.min(recent, this.floor * (1 + rise))
-    this.floor = Math.max(floor, 1e-6)
-    const release = Math.max(this.p.releaseRms, this.floor * this.p.releaseOverFloor)
+    if (recent < 1e-7) {
+      // silêncio digital (zero exato: ?fakemic, gate, microfone abrindo) não diz
+      // nada do ruído da sala: medir de novo quando o som voltar
+      this.floor = null
+      this.digitalSilence = true
+    } else {
+      if (this.floor === null) {
+        // o som que volta depois do zero exato pode ser o toque, não o ruído:
+        // se já é forte como um ataque, o ruído começa onde não atrapalha
+        const quiet = this.p.releaseOverFloor > 0 ? this.p.releaseRms / this.p.releaseOverFloor : 0
+        this.floor = this.digitalSilence && recent >= this.p.onsetMinRms ? quiet : recent
+      } else this.floor = recent < this.floor ? recent : Math.min(recent, this.floor * (1 + rise))
+      this.digitalSilence = false
+    }
+    const release = Math.max(this.p.releaseRms, (this.floor ?? 0) * this.p.releaseOverFloor)
     this.release = release
 
     // nível para o indicador

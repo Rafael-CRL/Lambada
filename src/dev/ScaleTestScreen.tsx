@@ -101,7 +101,8 @@ export default function ScaleTestScreen() {
   }
 
   const stop = async () => {
-    if (!capture.current || !mic) return
+    // clique duplo: a segunda chamada chega antes do await terminar
+    if (!capture.current || !mic || !recordingRef.current) return
     recordingRef.current = false
     const rec = await capture.current.end()
     setRecording(false)

@@ -90,7 +90,8 @@ export default function RecorderScreen() {
 
   const stop = async () => {
     const take = recording
-    if (!take || !capture.current || !mic) return
+    // clique duplo: a segunda chamada chega antes do await terminar
+    if (!take || !capture.current || !mic || !recordingRef.current) return
     recordingRef.current = false
     const rec = await capture.current.end()
     setRecording(null)

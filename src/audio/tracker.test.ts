@@ -129,6 +129,16 @@ describe('detecção de notas', () => {
     expect(notes(run(signal)).map((n) => n.midi)).toEqual([m('E4'), m('G3')])
   })
 
+  test('zeros no começo (microfone abrindo) e depois ruído: as notas ainda acabam', () => {
+    const signal = render([{ at: 1, note: 'G3', decay: 0.25 }, { at: 3, note: 'G3', decay: 0.25 }], 4.5, 0.02)
+    signal.fill(0, 0, Math.round(0.3 * SR))
+    const ev = run(signal)
+    expect(notes(ev).map((x) => x.midi)).toEqual([m('G3'), m('G3')])
+    const releases = ev.filter((e) => e.type === 'release').map((e) => e.time)
+    expect(releases.some((t) => t > 1 && t < 3)).toBe(true)
+    expect(releases.some((t) => t > 3)).toBe(true)
+  })
+
   test('fora da faixa do violão é descartado', () => {
     // ~1047 Hz: acima de maxFreq
     expect(notes(run(render([{ at: 0.2, note: 'C6' }], 0.8)))).toHaveLength(0)

@@ -30,7 +30,8 @@ function fixtures(): Plugin {
         if (req.method === 'GET') {
           let names: string[] = []
           try {
-            names = readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5))
+            // um .wav sem .json (o .json não chegou) também ocupa o nome
+            names = [...new Set(readdirSync(dir).flatMap((f) => (/\.(wav|json)$/.test(f) ? [f.replace(/\.(wav|json)$/, '')] : [])))]
           } catch {
             /* pasta ainda não existe */
           }
@@ -45,7 +46,7 @@ function fixtures(): Plugin {
             const to = `${dir}descartadas/`
             mkdirSync(to, { recursive: true })
             // o nome volta a ficar livre na pasta principal: não sobrescrever um descarte antigo
-            const kept = existsSync(`${to}${name}.json`) ? `${name}-${Date.now()}` : name
+            const kept = existsSync(`${to}${name}.json`) || existsSync(`${to}${name}.wav`) ? `${name}-${Date.now()}` : name
             for (const ext of ['wav', 'json'])
               if (existsSync(`${dir}${name}.${ext}`)) renameSync(`${dir}${name}.${ext}`, `${to}${kept}.${ext}`)
             return res.end()
