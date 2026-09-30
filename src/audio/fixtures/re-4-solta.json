@@ -1,0 +1,61 @@
+{
+  "id": "re-4-solta",
+  "how": "8 vezes, uma por segundo.",
+  "expected": [
+    "D3",
+    "D3",
+    "D3",
+    "D3",
+    "D3",
+    "D3",
+    "D3",
+    "D3",
+    "D3"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T01:02:26.563Z",
+  "live": [
+    {
+      "note": "D3",
+      "onset": 3.101,
+      "time": 3.253
+    },
+    {
+      "note": "D3",
+      "onset": 7.712,
+      "time": 7.861
+    },
+    {
+      "note": "D3",
+      "onset": 9.749,
+      "time": 9.909
+    },
+    {
+      "note": "D3",
+      "onset": 11.937,
+      "time": 12.096
+    },
+    {
+      "note": "D3",
+      "onset": 13.976,
+      "time": 14.176
+    },
+    {
+      "note": "D3",
+      "onset": 16.171,
+      "time": 16.32
+    },
+    {
+      "note": "D3",
+      "onset": 18.263,
+      "time": 18.421
+    },
+    {
+      "note": "D3",
+      "onset": 20.204,
+      "time": 20.363
+    }
+  ],
+  "obs": "tocado 9 vezes, não 8"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "soltas-rapida-2",
+  "take": "soltas-rapida",
+  "how": "As 6 cordas soltas, da 6ª à 1ª e de volta (Mi Lá Ré Sol Si Mi Mi Si Sol Ré Lá Mi), o mais rápido que conseguir tocar limpo.",
+  "expected": [
+    "E2",
+    "A2",
+    "D3",
+    "G3",
+    "B3",
+    "E4",
+    "E4",
+    "B3",
+    "G3",
+    "D3",
+    "A2",
+    "E2"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T02:01:35.611Z",
+  "live": [
+    {
+      "note": "E2",
+      "onset": 2.872,
+      "time": 2.987
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "id": "soltas-lenta-2",
+  "take": "soltas-lenta",
+  "how": "As 6 cordas soltas, da 6ª à 1ª e de volta (Mi Lá Ré Sol Si Mi Mi Si Sol Ré Lá Mi), uma por segundo.",
+  "expected": [
+    "E2",
+    "A2",
+    "D3",
+    "G3",
+    "B3",
+    "E4",
+    "E4",
+    "B3",
+    "G3",
+    "D3",
+    "A2",
+    "E2"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T02:00:40.799Z",
+  "live": [
+    {
+      "note": "E2",
+      "onset": 4.535,
+      "time": 4.64
+    },
+    {
+      "note": "D3",
+      "onset": 6.944,
+      "time": 7.072
+    },
+    {
+      "note": "E3",
+      "onset": 11.159,
+      "time": 11.424
+    },
+    {
+      "note": "E2",
+      "onset": 11.669,
+      "time": 12.021
+    },
+    {
+      "note": "G3",
+      "onset": 12.131,
+      "time": 12.256
+    },
+    {
+      "note": "D3",
+      "onset": 12.597,
+      "time": 13.248
+    }
+  ]
+}

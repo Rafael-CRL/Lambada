@@ -106,7 +106,7 @@ export class ScoreController extends Controller {
   private spb: number
   private readonly beatPx: number
   private readonly tol: number
-  /** o microfone só confirma a nota ~150 ms após o ataque */
+  /** o microfone só confirma a nota um pouco depois do ataque (attackIgnore + stableTime) */
   private readonly grace: number
   private readonly maxBars: number | null
   private readonly timed: boolean

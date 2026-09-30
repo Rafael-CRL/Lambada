@@ -1,0 +1,59 @@
+{
+  "id": "si-2-solta",
+  "how": "8 vezes, uma por segundo.",
+  "expected": [
+    "B3",
+    "B3",
+    "B3",
+    "B3",
+    "B3",
+    "B3",
+    "B3",
+    "B3"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T01:04:09.646Z",
+  "live": [
+    {
+      "note": "B3",
+      "onset": 2.219,
+      "time": 2.389
+    },
+    {
+      "note": "B3",
+      "onset": 3.827,
+      "time": 4
+    },
+    {
+      "note": "B3",
+      "onset": 5.461,
+      "time": 5.632
+    },
+    {
+      "note": "B3",
+      "onset": 7.264,
+      "time": 7.435
+    },
+    {
+      "note": "B3",
+      "onset": 9.048,
+      "time": 9.227
+    },
+    {
+      "note": "B3",
+      "onset": 10.733,
+      "time": 10.912
+    },
+    {
+      "note": "B3",
+      "onset": 12.448,
+      "time": 12.619
+    },
+    {
+      "note": "B3",
+      "onset": 14.144,
+      "time": 14.325
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "id": "re-2-casa3",
+  "how": "8 vezes, uma por segundo.",
+  "expected": [
+    "D4",
+    "D4",
+    "D4",
+    "D4",
+    "D4",
+    "D4",
+    "D4",
+    "D4"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T01:03:08.867Z",
+  "live": [
+    {
+      "note": "D4",
+      "onset": 2.779,
+      "time": 2.965
+    },
+    {
+      "note": "D4",
+      "onset": 4.704,
+      "time": 4.885
+    },
+    {
+      "note": "D4",
+      "onset": 6.645,
+      "time": 6.837
+    },
+    {
+      "note": "D4",
+      "onset": 8.577,
+      "time": 8.757
+    },
+    {
+      "note": "D4",
+      "onset": 10.488,
+      "time": 10.677
+    },
+    {
+      "note": "D4",
+      "onset": 12.416,
+      "time": 12.597
+    },
+    {
+      "note": "D4",
+      "onset": 14.301,
+      "time": 14.485
+    },
+    {
+      "note": "D4",
+      "onset": 16.129,
+      "time": 16.32
+    }
+  ]
+}

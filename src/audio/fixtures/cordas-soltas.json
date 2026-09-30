@@ -1,0 +1,47 @@
+{
+  "id": "cordas-soltas",
+  "how": "Da 6ª à 1ª, uma de cada vez, deixando cada uma soar cerca de 1 s.",
+  "expected": [
+    "E2",
+    "A2",
+    "D3",
+    "G3",
+    "B3",
+    "E4"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T01:00:32.750Z",
+  "live": [
+    {
+      "note": "E2",
+      "onset": 2.688,
+      "time": 2.827
+    },
+    {
+      "note": "A2",
+      "onset": 5.153,
+      "time": 5.301
+    },
+    {
+      "note": "D3",
+      "onset": 7.709,
+      "time": 7.861
+    },
+    {
+      "note": "G3",
+      "onset": 10.339,
+      "time": 10.485
+    },
+    {
+      "note": "B3",
+      "onset": 12.901,
+      "time": 13.653
+    },
+    {
+      "note": "E4",
+      "onset": 15.413,
+      "time": 15.584
+    }
+  ]
+}

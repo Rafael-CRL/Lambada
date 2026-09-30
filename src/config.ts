@@ -15,8 +15,8 @@ export const DETECTION = {
     { below: 500, min: 0.86 },
     { below: Infinity, min: 0.8 },
   ],
-  /** Tempo que a nota precisa ficar estável para ser aceita (s). */
-  stableTime: 0.09,
+  /** Tempo que a nota precisa ficar estável para ser aceita (s). Nas gravações reais, 90 ms perdia notas rápidas e 70 ms ainda perdia várias. */
+  stableTime: 0.06,
   /** Tolerância de afinação para considerar "o mesmo semitom" (cents). */
   centsTolerance: 45,
   /** Ignorar o pitch logo após o ataque (s). */
@@ -29,7 +29,11 @@ export const DETECTION = {
   onsetRefractory: 0.08,
   /** Abaixo disso a nota é considerada encerrada. */
   releaseRms: 0.006,
-  /** Tamanho do bloco usado para medir energia recente e localizar o ataque. */
+  /**
+   * Metade da janela da energia recente (amostras). Janelas maiores tiravam
+   * ataques falsos das notas graves, mas apagavam a pausa curta entre uma nota
+   * forte abafada e a seguinte, mais fraca, que se perdia.
+   */
   energyBlock: 256,
   /** Suavização do nível mostrado no indicador (0–1, maior = mais lento). */
   meterSmoothing: 0.75,

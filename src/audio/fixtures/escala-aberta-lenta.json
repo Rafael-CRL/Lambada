@@ -1,0 +1,211 @@
+{
+  "id": "escala-aberta-lenta",
+  "how": "Do Mi da 6ª corda solta ao Lá da 1ª (casa 5), subindo e descendo, só notas naturais, com as cordas soltas, uma nota por segundo.",
+  "expected": [
+    "E2",
+    "F2",
+    "G2",
+    "A2",
+    "B2",
+    "C3",
+    "D3",
+    "E3",
+    "F3",
+    "G3",
+    "A3",
+    "B3",
+    "C4",
+    "D4",
+    "E4",
+    "F4",
+    "G4",
+    "A4",
+    "G4",
+    "F4",
+    "E4",
+    "D4",
+    "C4",
+    "B3",
+    "A3",
+    "G3",
+    "F3",
+    "E3",
+    "D3",
+    "C3",
+    "B2",
+    "A2",
+    "G2",
+    "F2",
+    "E2"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T01:21:38.962Z",
+  "live": [
+    {
+      "note": "E2",
+      "onset": 2.744,
+      "time": 2.891
+    },
+    {
+      "note": "F2",
+      "onset": 3.744,
+      "time": 3.883
+    },
+    {
+      "note": "A2",
+      "onset": 7.253,
+      "time": 7.392
+    },
+    {
+      "note": "B2",
+      "onset": 8.235,
+      "time": 8.384
+    },
+    {
+      "note": "C3",
+      "onset": 9.195,
+      "time": 9.376
+    },
+    {
+      "note": "D3",
+      "onset": 10.229,
+      "time": 10.4
+    },
+    {
+      "note": "E3",
+      "onset": 11.119,
+      "time": 11.275
+    },
+    {
+      "note": "F3",
+      "onset": 12.032,
+      "time": 12.181
+    },
+    {
+      "note": "G3",
+      "onset": 12.896,
+      "time": 13.045
+    },
+    {
+      "note": "A3",
+      "onset": 13.739,
+      "time": 13.877
+    },
+    {
+      "note": "C4",
+      "onset": 15.584,
+      "time": 15.755
+    },
+    {
+      "note": "D4",
+      "onset": 16.448,
+      "time": 16.64
+    },
+    {
+      "note": "E4",
+      "onset": 17.388,
+      "time": 17.547
+    },
+    {
+      "note": "F4",
+      "onset": 18.444,
+      "time": 18.613
+    },
+    {
+      "note": "G4",
+      "onset": 19.428,
+      "time": 19.595
+    },
+    {
+      "note": "A4",
+      "onset": 20.864,
+      "time": 21.035
+    },
+    {
+      "note": "G4",
+      "onset": 21.867,
+      "time": 22.037
+    },
+    {
+      "note": "F4",
+      "onset": 22.592,
+      "time": 22.752
+    },
+    {
+      "note": "E4",
+      "onset": 23.595,
+      "time": 23.776
+    },
+    {
+      "note": "D4",
+      "onset": 24.451,
+      "time": 24.64
+    },
+    {
+      "note": "C4",
+      "onset": 25.344,
+      "time": 25.504
+    },
+    {
+      "note": "B3",
+      "onset": 26.261,
+      "time": 26.443
+    },
+    {
+      "note": "A3",
+      "onset": 27.168,
+      "time": 27.317
+    },
+    {
+      "note": "G3",
+      "onset": 28.053,
+      "time": 28.203
+    },
+    {
+      "note": "F3",
+      "onset": 29.205,
+      "time": 29.355
+    },
+    {
+      "note": "E3",
+      "onset": 30.097,
+      "time": 30.251
+    },
+    {
+      "note": "D3",
+      "onset": 30.987,
+      "time": 31.147
+    },
+    {
+      "note": "C3",
+      "onset": 31.797,
+      "time": 31.979
+    },
+    {
+      "note": "B2",
+      "onset": 32.685,
+      "time": 32.832
+    },
+    {
+      "note": "A2",
+      "onset": 33.536,
+      "time": 33.675
+    },
+    {
+      "note": "G2",
+      "onset": 34.443,
+      "time": 34.581
+    },
+    {
+      "note": "F2",
+      "onset": 35.179,
+      "time": 35.328
+    },
+    {
+      "note": "E2",
+      "onset": 36.992,
+      "time": 37.131
+    }
+  ]
+}

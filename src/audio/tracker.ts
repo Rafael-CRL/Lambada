@@ -110,6 +110,8 @@ export class NoteTracker {
       this.phase = 'idle'
       this.candidate = null
       this.heldMidi = null
+      // o ataque que acabou era ruído (o dedo preparando o toque): o toque de verdade vem logo depois
+      this.lastOnset = -Infinity
       events.push({ type: 'release', time })
     }
 
@@ -128,7 +130,10 @@ export class NoteTracker {
 
     if (this.phase === 'attack' && !ignoring) this.phase = 'tracking'
 
-    if (this.phase === 'tracking' || this.phase === 'sustain') {
+    // Só um ataque abre uma nota. Uma nota diferente sem ataque (outra corda
+    // soando, dedo esbarrando) não conta: nas gravações reais isso só gerava
+    // notas a mais. Ligados vão precisar de outro sinal de ataque.
+    if (this.phase === 'tracking') {
       const nearest = reading ? Math.round(reading.midi) : null
       const cents = reading && nearest !== null ? (reading.midi - nearest) * 100 : 0
       const usable = nearest !== null && Math.abs(cents) <= this.p.centsTolerance
@@ -146,25 +151,17 @@ export class NoteTracker {
         this.candidate = null
       }
 
-      if (this.candidate !== null) {
-        const held = time - this.candidateSince
-        const accept =
-          this.phase === 'tracking'
-            ? held >= this.p.stableTime
-            : // sem ataque claro: nota diferente sustentada por mais tempo
-              this.candidate !== this.heldMidi && held >= this.p.stableTime * 1.5
-        if (accept) {
-          events.push({
-            type: 'note',
-            midi: this.candidate,
-            freq: this.candidateFreq,
-            cents: this.candidateCents,
-            onsetTime: this.phase === 'tracking' ? this.onsetTime : this.candidateSince,
-            time,
-          })
-          this.heldMidi = this.candidate
-          this.phase = 'sustain'
-        }
+      if (this.candidate !== null && time - this.candidateSince >= this.p.stableTime) {
+        events.push({
+          type: 'note',
+          midi: this.candidate,
+          freq: this.candidateFreq,
+          cents: this.candidateCents,
+          onsetTime: this.onsetTime,
+          time,
+        })
+        this.heldMidi = this.candidate
+        this.phase = 'sustain'
       }
     }
     this.live.heldMidi = this.heldMidi

@@ -75,7 +75,11 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 - **Animação fora do React:** `stage.ts` mexe no SVG por `transform`; o cursor do ritmo também.
   - Relógio único = `AudioContext` (`src/audio/clock.ts`). `clock()` é o tempo que está saindo no alto-falante: som agendado em T soa quando `clock() = T`, e batidas (`clock(event.timeStamp)`) comparam direto.
   - Metrônomo com agendador de lookahead; tons das figuras em `src/audio/tones.ts`.
-- **Áudio:** detecção em `src/audio/tracker.ts` (ataque + estabilidade), atrás do adaptador `pitch.ts` (pitchy).
+- **Áudio:** detecção em `src/audio/tracker.ts` (ataque + estabilidade), atrás do adaptador `pitch.ts` (pitchy). O que as gravações reais mostraram (violão de nylon, set/2026):
+  - O dedo encosta na corda antes do toque e faz um ruído que parece um ataque. Depois de um "fim de nota", o próximo ataque vale na hora; antes, o toque de verdade caía no intervalo mínimo entre ataques e a nota inteira se perdia.
+  - Só um ataque abre uma nota. Aceitar nota diferente sem ataque só gerava notas a mais (outra corda soando, dedo saindo da corda). Ligados vão precisar de outro sinal de ataque.
+  - Estabilidade de 60 ms (era 90): 90 perdia as notas de escala rápida, cuja leitura limpa dura ~100 ms depois do ruído do ataque.
+  - Limites atuais (o teste das gravações tem um teto de erros para cada uma, em `KNOWN`): com cordas soltas ainda soando, a mistura se repete num período mais grave (Si3 + Mi2 solto → Mi2; Ré4 + Sol3 solto → Sol grave), e as 6 cordas soltas em sequência quase não são reconhecidas (polifonia). Nota fantasma: a corda solta soa fraca quando o dedo sai dela. Resolver exige conferir a nota esperada no espectro, não mais ajuste de parâmetro.
 - **Parâmetros ajustáveis:** todos em `src/config.ts`.
 - **Armadilha:** o `<svg>` da pauta do exercício recebe a classe `staff` do palco *e* do React. Se o `className` do React mudar sem incluir `staff`, somem as cores das linhas e da clave.
 - **Armadilha:** campos de classe inicializados com `this.d` rodam antes do construtor (ES2022); inicialize no construtor.
@@ -84,6 +88,7 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 
 - `docker compose up` → http://localhost:5173. Nada de Node no host.
 - Testes e tipos: `docker compose exec app npx vitest run` e `docker compose exec app npx tsc -b`.
+- **Gravações reais do detector:** `#/gravar` (só em desenvolvimento) grava o violão pelo mesmo caminho que o detector ouve e salva em `src/audio/fixtures/` (`.wav` + `.json` com as notas esperadas e o que foi ouvido ao vivo). `tracker.fixtures.test.ts` roda o detector sobre cada uma. As tomadas ficam em `src/dev/takes.ts`; gravar de novo cria `<id>-2`, `-3`… Se a execução errar, corrija `expected` no `.json` e explique em `obs` (conferir a energia do ataque separa toque de nota fantasma). Tomadas sem som útil ficam em `fixtures/descartadas/` (fora do git).
 - **Hot reload às vezes perde uma escrita rápida em sequência** e serve versão velha. Conferir com `curl localhost:5173/src/<arquivo>` e, se preciso, `touch` no arquivo. Ele também remonta a tela: um `window.__lambada.controller` guardado antes fica velho.
 - **No navegador de automação:**
   - Usar **http://127.0.0.1:5173** (outra origem, outro IndexedDB), para não mexer nos dados reais do usuário em `localhost`. Apagar o banco `lambada` dessa origem ao terminar.

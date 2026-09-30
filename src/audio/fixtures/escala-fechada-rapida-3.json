@@ -1,0 +1,37 @@
+{
+  "id": "escala-fechada-rapida-3",
+  "take": "escala-fechada-rapida",
+  "how": "Do Mi da 6ª corda solta ao Lá da 1ª (casa 5), subindo e descendo, só notas naturais, sem cordas soltas (Lá, Ré, Sol e Mi na casa 5 da corda de baixo, Si na 3ª casa 4; o Mi grave continua solto), o mais rápido que conseguir tocar limpo.",
+  "expected": [
+    "E2",
+    "F2",
+    "G2",
+    "A2"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T02:04:07.314Z",
+  "live": [
+    {
+      "note": "E2",
+      "onset": 3.381,
+      "time": 3.488
+    },
+    {
+      "note": "F2",
+      "onset": 3.84,
+      "time": 3.947
+    },
+    {
+      "note": "G2",
+      "onset": 4.245,
+      "time": 4.352
+    },
+    {
+      "note": "A2",
+      "onset": 4.789,
+      "time": 4.928
+    }
+  ],
+  "obs": "interrompida no Lá2"
+}

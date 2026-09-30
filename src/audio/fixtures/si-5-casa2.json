@@ -1,0 +1,59 @@
+{
+  "id": "si-5-casa2",
+  "how": "8 vezes, uma por segundo.",
+  "expected": [
+    "B2",
+    "B2",
+    "B2",
+    "B2",
+    "B2",
+    "B2",
+    "B2",
+    "B2"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T01:04:39.842Z",
+  "live": [
+    {
+      "note": "B2",
+      "onset": 3.961,
+      "time": 4.107
+    },
+    {
+      "note": "B2",
+      "onset": 5.419,
+      "time": 5.557
+    },
+    {
+      "note": "B2",
+      "onset": 6.916,
+      "time": 7.061
+    },
+    {
+      "note": "B2",
+      "onset": 8.216,
+      "time": 8.363
+    },
+    {
+      "note": "B2",
+      "onset": 9.521,
+      "time": 9.664
+    },
+    {
+      "note": "B2",
+      "onset": 10.765,
+      "time": 10.912
+    },
+    {
+      "note": "B2",
+      "onset": 12.085,
+      "time": 12.224
+    },
+    {
+      "note": "B2",
+      "onset": 13.461,
+      "time": 13.611
+    }
+  ]
+}

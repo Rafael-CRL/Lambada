@@ -1,0 +1,235 @@
+{
+  "id": "escala-fechada-rapida-2",
+  "take": "escala-fechada-rapida",
+  "how": "Do Mi da 6ª corda solta ao Lá da 1ª (casa 5), subindo e descendo, só notas naturais, sem cordas soltas (Lá, Ré, Sol e Mi na casa 5 da corda de baixo, Si na 3ª casa 4; o Mi grave continua solto), o mais rápido que conseguir tocar limpo.",
+  "expected": [
+    "E2",
+    "F2",
+    "G2",
+    "A2",
+    "B2",
+    "C3",
+    "D3",
+    "E3",
+    "F3",
+    "G3",
+    "A3",
+    "A3",
+    "B3",
+    "C4",
+    "D4",
+    "E4",
+    "F4",
+    "G4",
+    "A4",
+    "G4",
+    "F4",
+    "E4",
+    "D4",
+    "C4",
+    "B3",
+    "B3",
+    "A3",
+    "G3",
+    "F3",
+    "E3",
+    "D3",
+    "C3",
+    "B2",
+    "A2",
+    "G2",
+    "F2",
+    "E2"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T02:06:03.220Z",
+  "live": [
+    {
+      "note": "E2",
+      "onset": 2.749,
+      "time": 2.859
+    },
+    {
+      "note": "F2",
+      "onset": 3.253,
+      "time": 3.36
+    },
+    {
+      "note": "G2",
+      "onset": 3.691,
+      "time": 3.808
+    },
+    {
+      "note": "A2",
+      "onset": 4.161,
+      "time": 4.267
+    },
+    {
+      "note": "B2",
+      "onset": 4.928,
+      "time": 5.045
+    },
+    {
+      "note": "C3",
+      "onset": 5.312,
+      "time": 5.429
+    },
+    {
+      "note": "D3",
+      "onset": 6.071,
+      "time": 6.197
+    },
+    {
+      "note": "E3",
+      "onset": 6.701,
+      "time": 6.816
+    },
+    {
+      "note": "F3",
+      "onset": 7.179,
+      "time": 7.296
+    },
+    {
+      "note": "G3",
+      "onset": 8.053,
+      "time": 8.16
+    },
+    {
+      "note": "A3",
+      "onset": 9.024,
+      "time": 9.131
+    },
+    {
+      "note": "A3",
+      "onset": 10.112,
+      "time": 10.219
+    },
+    {
+      "note": "B3",
+      "onset": 10.965,
+      "time": 11.093
+    },
+    {
+      "note": "C4",
+      "onset": 12.427,
+      "time": 12.576
+    },
+    {
+      "note": "D4",
+      "onset": 13.037,
+      "time": 13.195
+    },
+    {
+      "note": "E4",
+      "onset": 13.888,
+      "time": 14.016
+    },
+    {
+      "note": "F4",
+      "onset": 14.421,
+      "time": 14.56
+    },
+    {
+      "note": "G4",
+      "onset": 14.864,
+      "time": 15.008
+    },
+    {
+      "note": "A4",
+      "onset": 15.477,
+      "time": 15.616
+    },
+    {
+      "note": "G4",
+      "onset": 16.288,
+      "time": 16.469
+    },
+    {
+      "note": "F4",
+      "onset": 16.587,
+      "time": 16.789
+    },
+    {
+      "note": "E4",
+      "onset": 17.301,
+      "time": 17.483
+    },
+    {
+      "note": "D4",
+      "onset": 17.981,
+      "time": 18.155
+    },
+    {
+      "note": "C4",
+      "onset": 18.307,
+      "time": 18.443
+    },
+    {
+      "note": "B3",
+      "onset": 19.787,
+      "time": 19.915
+    },
+    {
+      "note": "B3",
+      "onset": 20.075,
+      "time": 20.224
+    },
+    {
+      "note": "A3",
+      "onset": 20.385,
+      "time": 20.501
+    },
+    {
+      "note": "G3",
+      "onset": 22.403,
+      "time": 22.517
+    },
+    {
+      "note": "F3",
+      "onset": 23.157,
+      "time": 23.285
+    },
+    {
+      "note": "E3",
+      "onset": 23.673,
+      "time": 23.797
+    },
+    {
+      "note": "D3",
+      "onset": 25.528,
+      "time": 25.643
+    },
+    {
+      "note": "C3",
+      "onset": 26.392,
+      "time": 26.507
+    },
+    {
+      "note": "B2",
+      "onset": 26.955,
+      "time": 27.072
+    },
+    {
+      "note": "A2",
+      "onset": 28.672,
+      "time": 28.779
+    },
+    {
+      "note": "G2",
+      "onset": 29.328,
+      "time": 29.44
+    },
+    {
+      "note": "F2",
+      "onset": 29.825,
+      "time": 29.931
+    },
+    {
+      "note": "E2",
+      "onset": 30.265,
+      "time": 30.379
+    }
+  ],
+  "obs": "Lá3 da subida e Si3 da descida tocados duas vezes (ataques fortes nos dois)"
+}

@@ -1,0 +1,233 @@
+{
+  "id": "escala-fechada-lenta",
+  "how": "Do Mi da 6ª corda solta ao Lá da 1ª (casa 5), subindo e descendo, só notas naturais, sem cordas soltas (Lá, Ré, Sol e Mi na casa 5 da corda de baixo, Si na 3ª casa 4; o Mi grave continua solto), uma nota por segundo.",
+  "expected": [
+    "E2",
+    "F2",
+    "G2",
+    "A2",
+    "B2",
+    "C3",
+    "D3",
+    "E3",
+    "F3",
+    "G3",
+    "G3",
+    "A3",
+    "B3",
+    "C4",
+    "D4",
+    "E4",
+    "F4",
+    "G4",
+    "A4",
+    "G4",
+    "F4",
+    "E4",
+    "D4",
+    "C4",
+    "B3",
+    "A3",
+    "G3",
+    "F3",
+    "E3",
+    "D3",
+    "C3",
+    "B2",
+    "A2",
+    "G2",
+    "F2",
+    "E2"
+  ],
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "2026-09-30T01:24:20.280Z",
+  "live": [
+    {
+      "note": "E2",
+      "onset": 2.209,
+      "time": 2.347
+    },
+    {
+      "note": "F2",
+      "onset": 3.013,
+      "time": 3.157
+    },
+    {
+      "note": "G2",
+      "onset": 4.171,
+      "time": 4.32
+    },
+    {
+      "note": "A2",
+      "onset": 5.216,
+      "time": 5.397
+    },
+    {
+      "note": "B2",
+      "onset": 6.637,
+      "time": 6.784
+    },
+    {
+      "note": "C3",
+      "onset": 7.479,
+      "time": 7.627
+    },
+    {
+      "note": "D3",
+      "onset": 8.492,
+      "time": 8.64
+    },
+    {
+      "note": "E3",
+      "onset": 10.604,
+      "time": 10.763
+    },
+    {
+      "note": "F3",
+      "onset": 11.584,
+      "time": 11.733
+    },
+    {
+      "note": "G3",
+      "onset": 12.704,
+      "time": 12.843
+    },
+    {
+      "note": "G3",
+      "onset": 14.08,
+      "time": 14.261
+    },
+    {
+      "note": "A3",
+      "onset": 17.013,
+      "time": 17.152
+    },
+    {
+      "note": "B3",
+      "onset": 20.848,
+      "time": 21.003
+    },
+    {
+      "note": "C4",
+      "onset": 23.419,
+      "time": 23.595
+    },
+    {
+      "note": "D4",
+      "onset": 24.096,
+      "time": 24.299
+    },
+    {
+      "note": "G2",
+      "onset": 24.384,
+      "time": 24.523
+    },
+    {
+      "note": "E4",
+      "onset": 26.647,
+      "time": 26.816
+    },
+    {
+      "note": "F4",
+      "onset": 27.577,
+      "time": 27.744
+    },
+    {
+      "note": "G4",
+      "onset": 28.439,
+      "time": 28.597
+    },
+    {
+      "note": "A4",
+      "onset": 29.504,
+      "time": 29.675
+    },
+    {
+      "note": "G4",
+      "onset": 30.359,
+      "time": 30.517
+    },
+    {
+      "note": "F4",
+      "onset": 33.115,
+      "time": 33.28
+    },
+    {
+      "note": "E4",
+      "onset": 34.817,
+      "time": 34.987
+    },
+    {
+      "note": "D4",
+      "onset": 35.756,
+      "time": 35.947
+    },
+    {
+      "note": "C4",
+      "onset": 36.64,
+      "time": 36.811
+    },
+    {
+      "note": "B3",
+      "onset": 37.707,
+      "time": 37.867
+    },
+    {
+      "note": "A3",
+      "onset": 38.571,
+      "time": 38.709
+    },
+    {
+      "note": "G3",
+      "onset": 42.188,
+      "time": 42.325
+    },
+    {
+      "note": "F3",
+      "onset": 43.927,
+      "time": 44.075
+    },
+    {
+      "note": "E3",
+      "onset": 44.603,
+      "time": 44.747
+    },
+    {
+      "note": "D3",
+      "onset": 46.603,
+      "time": 46.752
+    },
+    {
+      "note": "C3",
+      "onset": 47.819,
+      "time": 47.979
+    },
+    {
+      "note": "B2",
+      "onset": 48.516,
+      "time": 48.661
+    },
+    {
+      "note": "A2",
+      "onset": 49.44,
+      "time": 49.589
+    },
+    {
+      "note": "G2",
+      "onset": 50.443,
+      "time": 50.581
+    },
+    {
+      "note": "F2",
+      "onset": 51.191,
+      "time": 51.339
+    },
+    {
+      "note": "E2",
+      "onset": 51.895,
+      "time": 52.032
+    }
+  ],
+  "obs": "o Sol3 da subida foi tocado duas vezes (12,7 s e 14,2 s)"
+}
