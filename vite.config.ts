@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 /** Só em desenvolvimento: o gravador (`#/gravar`) salva as gravações de teste do detector. */
 function fixtures(): Plugin {
-  const dir = fileURLToPath(new URL('./src/audio/fixtures/', import.meta.url))
+  const root = fileURLToPath(new URL('./src/audio/fixtures/', import.meta.url))
   const MAX = 64 * 1024 * 1024
   return {
     name: 'lambada-fixtures',
@@ -22,6 +22,8 @@ function fixtures(): Plugin {
         const host = (req.headers.host ?? '').replace(/:\d+$/, '')
         if (host !== 'localhost' && host !== '127.0.0.1') return fail(403)
         const params = new URL(req.url ?? '', 'http://x').searchParams
+        // sessao/: as tomadas da tela de teste da escala (fora do git e do teste)
+        const dir = params.get('dir') === 'sessao' ? `${root}sessao/` : root
         if (req.method === 'GET') {
           let names: string[] = []
           try {

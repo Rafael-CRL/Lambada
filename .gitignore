@@ -3,3 +3,4 @@ dist
 *.tsbuildinfo
 CLAUDE.local.md
 src/audio/fixtures/descartadas/
+src/audio/fixtures/sessao/

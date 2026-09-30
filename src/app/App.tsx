@@ -17,6 +17,8 @@ import { useSettings, useThemeSync } from './settings'
 
 // gravador dos testes do detector: fica fora do build de produção
 const RecorderScreen = import.meta.env.DEV ? lazy(() => import('../dev/RecorderScreen')) : null
+// teste da escala com o violão: grava tomadas para medir o detector
+const ScaleTestScreen = import.meta.env.DEV ? lazy(() => import('../dev/ScaleTestScreen')) : null
 
 export function App() {
   const route = useRoute()
@@ -41,6 +43,11 @@ export function App() {
       {route.name === 'record' && RecorderScreen && (
         <Suspense>
           <RecorderScreen />
+        </Suspense>
+      )}
+      {route.name === 'scaleTest' && ScaleTestScreen && (
+        <Suspense>
+          <ScaleTestScreen />
         </Suspense>
       )}
     </Shell>
