@@ -1,0 +1,206 @@
+{
+  "id": "escala-solta-voltas-6",
+  "take": "escala-solta",
+  "how": "Escala Solta (a do exercício: naturais, casas 0–3), do Mi da 6ª corda solta ao Sol da 1ª casa 3, subindo e descendo.",
+  "expected": [
+    "E2",
+    "F2",
+    "G2",
+    "A2",
+    "B2",
+    "C3",
+    "D3",
+    "E3",
+    "F3",
+    "G3",
+    "A3",
+    "B3",
+    "C4",
+    "D4",
+    "E4",
+    "F4",
+    "G4",
+    "F4",
+    "E4",
+    "D4",
+    "C4",
+    "B3",
+    "A3",
+    "G3",
+    "F3",
+    "E3",
+    "D3",
+    "C3",
+    "B2",
+    "A2",
+    "G2",
+    "F2",
+    "E2"
+  ],
+  "obs": "Sessão de 30/09/2026 (tomada 7: 8 voltas seguidas, cada vez mais rápidas): volta 6, 11.9 s do primeiro ao último Mi (~2.8 notas/s). Cortada da gravação contínua, de 0,4 s antes do primeiro Mi a 0,7 s depois do último. O \"live\" é o detector da época: + nota esperada e ataque em blocos de 10 ms (sem o fim de nota adaptativo).",
+  "sampleRate": 48000,
+  "device": "Default",
+  "recordedAt": "",
+  "live": [
+    {
+      "note": "E2",
+      "onset": 0.4,
+      "time": 0.506
+    },
+    {
+      "note": "F2",
+      "onset": 0.831,
+      "time": 0.943
+    },
+    {
+      "note": "G2",
+      "onset": 1.306,
+      "time": 1.412
+    },
+    {
+      "note": "A2",
+      "onset": 1.743,
+      "time": 1.85
+    },
+    {
+      "note": "B2",
+      "onset": 2.16,
+      "time": 2.276
+    },
+    {
+      "note": "C3",
+      "onset": 2.548,
+      "time": 2.671
+    },
+    {
+      "note": "D3",
+      "onset": 2.916,
+      "time": 3.044
+    },
+    {
+      "note": "E3",
+      "onset": 3.29,
+      "time": 3.407
+    },
+    {
+      "note": "F3",
+      "onset": 3.642,
+      "time": 3.759
+    },
+    {
+      "note": "G3",
+      "onset": 3.983,
+      "time": 4.09
+    },
+    {
+      "note": "A3",
+      "onset": 4.32,
+      "time": 4.431
+    },
+    {
+      "note": "B3",
+      "onset": 4.634,
+      "time": 4.772
+    },
+    {
+      "note": "C4",
+      "onset": 4.996,
+      "time": 5.135
+    },
+    {
+      "note": "D4",
+      "onset": 5.343,
+      "time": 5.487
+    },
+    {
+      "note": "E4",
+      "onset": 5.668,
+      "time": 5.796
+    },
+    {
+      "note": "F4",
+      "onset": 6.0,
+      "time": 6.138
+    },
+    {
+      "note": "G4",
+      "onset": 6.39,
+      "time": 6.511
+    },
+    {
+      "note": "F4",
+      "onset": 6.696,
+      "time": 6.842
+    },
+    {
+      "note": "E4",
+      "onset": 7.047,
+      "time": 7.162
+    },
+    {
+      "note": "D4",
+      "onset": 8.326,
+      "time": 8.452
+    },
+    {
+      "note": "C4",
+      "onset": 8.634,
+      "time": 8.74
+    },
+    {
+      "note": "B3",
+      "onset": 8.879,
+      "time": 9.007
+    },
+    {
+      "note": "A3",
+      "onset": 9.214,
+      "time": 9.306
+    },
+    {
+      "note": "G3",
+      "onset": 9.491,
+      "time": 9.583
+    },
+    {
+      "note": "F3",
+      "onset": 9.867,
+      "time": 9.956
+    },
+    {
+      "note": "E3",
+      "onset": 10.159,
+      "time": 10.244
+    },
+    {
+      "note": "C3",
+      "onset": 10.97,
+      "time": 11.087
+    },
+    {
+      "note": "B2",
+      "onset": 11.324,
+      "time": 11.428
+    },
+    {
+      "note": "A2",
+      "onset": 11.556,
+      "time": 11.663
+    },
+    {
+      "note": "G2",
+      "onset": 11.802,
+      "time": 11.908
+    },
+    {
+      "note": "F2",
+      "onset": 12.059,
+      "time": 12.164
+    },
+    {
+      "note": "E2",
+      "onset": 12.335,
+      "time": 12.442
+    }
+  ]
+}
