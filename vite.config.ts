@@ -65,10 +65,11 @@ function fixtures(): Plugin {
         req.on('end', () => {
           try {
             mkdirSync(dir, { recursive: true })
-            writeFileSync(dir + file, Buffer.concat(body))
+            // nunca por cima: uma lista desatualizada no gravador apagaria uma gravação corrigida à mão
+            writeFileSync(dir + file, Buffer.concat(body), { flag: 'wx' })
             res.end()
-          } catch {
-            fail(500)
+          } catch (e) {
+            fail((e as NodeJS.ErrnoException).code === 'EEXIST' ? 409 : 500)
           }
         })
       })

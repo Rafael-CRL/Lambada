@@ -123,6 +123,12 @@ describe('detecção de notas', () => {
     expect(notes(run(noise))).toHaveLength(0)
   })
 
+  test('depois de silêncio digital (zeros exatos), a nota é reconhecida', () => {
+    // ?fakemic e interfaces com gate entregam zero exato entre as notas
+    const signal = render([{ at: 0.2, note: 'E4', duration: 0.5 }, { at: 1.2, note: 'G3' }], 2, 0)
+    expect(notes(run(signal)).map((n) => n.midi)).toEqual([m('E4'), m('G3')])
+  })
+
   test('fora da faixa do violão é descartado', () => {
     // ~1047 Hz: acima de maxFreq
     expect(notes(run(render([{ at: 0.2, note: 'C6' }], 0.8)))).toHaveLength(0)

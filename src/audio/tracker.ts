@@ -56,8 +56,8 @@ export class NoteTracker {
   private misses = 0
   private heldMidi: number | null = null
   private meter = 0
-  /** ruído de fundo estimado (RMS) */
-  private floor = 0
+  /** ruído de fundo estimado (RMS); null = ainda não medido */
+  private floor: number | null = null
   /** nível de fim de nota desta leitura */
   private release = 0
   /**
@@ -81,7 +81,7 @@ export class NoteTracker {
     this.candidate = null
     this.heldMidi = null
     this.misses = 0
-    this.floor = 0
+    this.floor = null
   }
 
   /** Processa uma leitura. `time` = instante da última amostra do buffer. */
@@ -99,7 +99,9 @@ export class NoteTracker {
     // Uma travada longa (aba em segundo plano) não conta como tempo de subida:
     // senão o ruído pula para o nível da nota que estiver soando.
     const rise = this.p.floorRise * Math.min(dt, 0.1)
-    this.floor = this.floor === 0 || recent < this.floor ? recent : Math.min(recent, this.floor * (1 + rise))
+    // (com piso: silêncio digital, zero exato, não pode travar a subida em zero)
+    const floor = this.floor === null || recent < this.floor ? recent : Math.min(recent, this.floor * (1 + rise))
+    this.floor = Math.max(floor, 1e-6)
     const release = Math.max(this.p.releaseRms, this.floor * this.p.releaseOverFloor)
     this.release = release
 
