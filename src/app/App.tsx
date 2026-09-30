@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { saveSettings } from '../db/db'
 import { ExerciseScreen } from '../exercises/ExerciseScreen'
 import { GuideScreen } from '../lessons/GuideScreen'
@@ -14,6 +14,9 @@ import { cx } from '../ui/controls'
 import { IconChart, IconGear, IconMoon, IconSun } from '../ui/icons'
 import { navigate, useRoute, type Route } from './router'
 import { useSettings, useThemeSync } from './settings'
+
+// gravador dos testes do detector: fica fora do build de produção
+const RecorderScreen = import.meta.env.DEV ? lazy(() => import('../dev/RecorderScreen')) : null
 
 export function App() {
   const route = useRoute()
@@ -35,6 +38,11 @@ export function App() {
       {route.name === 'guide' && <GuideScreen unit={route.unit} />}
       {route.name === 'progress' && <Progress settings={settings} />}
       {route.name === 'settings' && <SettingsScreen settings={settings} />}
+      {route.name === 'record' && RecorderScreen && (
+        <Suspense>
+          <RecorderScreen />
+        </Suspense>
+      )}
     </Shell>
   )
 }

@@ -11,6 +11,7 @@ export type Route =
   | { name: 'guide'; unit: string }
   | { name: 'progress' }
   | { name: 'settings' }
+  | { name: 'record' }
 
 export function parseHash(hash: string): Route {
   const [path, query = ''] = hash.replace(/^#\/?/, '').split('?')
@@ -29,6 +30,8 @@ export function parseHash(hash: string): Route {
       return { name: 'progress' }
     case 'settings':
       return { name: 'settings' }
+    case 'gravar':
+      return import.meta.env.DEV ? { name: 'record' } : { name: 'home' }
     case 'teoria':
     case 'pauta':
     case 'violao':
@@ -54,6 +57,8 @@ export function routeHash(r: Route): string {
       return '#/progress'
     case 'settings':
       return '#/settings'
+    case 'record':
+      return '#/gravar'
     case 'topic':
       return `#/${r.topic}`
   }

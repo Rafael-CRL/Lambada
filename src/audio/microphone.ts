@@ -12,7 +12,7 @@ export class Microphone {
   private buffer: Float32Array<ArrayBuffer>
   private tracker: NoteTracker
   /** s a subtrair do tempo de contexto para chegar ao relógio do app */
-  private compensation: number
+  readonly compensation: number
 
   private constructor(
     private source: AudioNode,
@@ -79,6 +79,12 @@ export class Microphone {
       if (e.type === 'note') e.onsetTime -= c
     }
     return events
+  }
+
+  /** Liga a entrada crua (a mesma que o detector ouve) a outro nó: o gravador de testes. */
+  tap(node: AudioNode): () => void {
+    this.source.connect(node)
+    return () => this.source.disconnect(node)
   }
 
   close() {
