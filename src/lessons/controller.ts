@@ -300,7 +300,7 @@ export class LessonController {
     const dt = this.lastFrame === null ? 0 : Math.min(0.1, Math.max(0, now - this.lastFrame))
     this.lastFrame = now
     if (this.d.mic) {
-      const events = this.d.mic.poll()
+      const events = this.d.mic.poll(this.target ? midiOf(this.target) - 12 : null)
       if (!this.finished && !this.paused) for (const e of events) if (e.type === 'note') this.answerMic(e.midi + 12, this.clock.fromApp(e.onsetTime))
     }
     if (!this.finished) this.update(now, dt)

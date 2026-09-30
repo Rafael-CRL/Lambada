@@ -56,6 +56,16 @@ export class NoteTracker {
   private misses = 0
   private heldMidi: number | null = null
   private meter = 0
+  /** ruído de fundo estimado (RMS) */
+  private floor = 0
+  /** nível de fim de nota desta leitura */
+  private release = 0
+  /**
+   * Nota que o exercício espera agora (MIDI soando), se souber. Ela é aceita
+   * com menos clareza e não cede a uma leitura intrusa isolada: com outra corda
+   * soando junto, a leitura alterna entre a nota e a mistura.
+   */
+  expected: number | null = null
   readonly live: LiveReading = { level: 0, midi: null, freq: null, clarity: 0, heldMidi: null }
 
   constructor(
@@ -71,6 +81,7 @@ export class NoteTracker {
     this.candidate = null
     this.heldMidi = null
     this.misses = 0
+    this.floor = 0
   }
 
   /** Processa uma leitura. `time` = instante da última amostra do buffer. */
@@ -79,8 +90,15 @@ export class NoteTracker {
     const n = buf.length
     const block = this.p.energyBlock
     const recent = rms(buf, n - 2 * block, n)
-    const newSamples = this.lastTime === null ? n : Math.min(n, Math.round((time - this.lastTime) * this.sampleRate))
+    const dt = this.lastTime === null ? 0 : Math.max(0, time - this.lastTime)
+    const newSamples = this.lastTime === null ? n : Math.min(n, Math.round(dt * this.sampleRate))
     this.lastTime = time
+
+    // ruído de fundo: desce na hora com o som e sobe devagar (só o silêncio
+    // entre as notas o puxa para baixo); o fim da nota fica logo acima dele
+    this.floor = this.floor === 0 || recent < this.floor ? recent : Math.min(recent, this.floor * (1 + this.p.floorRise * dt))
+    const release = Math.max(this.p.releaseRms, this.floor * this.p.releaseOverFloor)
+    this.release = release
 
     // nível para o indicador
     const whole = rms(buf, 0, n)
@@ -93,8 +111,9 @@ export class NoteTracker {
     const reference = this.recentHistory.length ? Math.min(...this.recentHistory) : 0
     const isOnset =
       recent >= this.p.onsetMinRms &&
-      recent > Math.max(reference, this.p.releaseRms / 2) * this.p.onsetRatio &&
-      time - this.lastOnset >= this.p.onsetRefractory
+      recent > Math.max(reference, release / 2) * this.p.onsetRatio &&
+      time - this.lastOnset >= this.p.onsetRefractory &&
+      (this.p.onsetSharpness <= 0 || this.sharpness(buf, newSamples) >= this.p.onsetSharpness)
     this.recentHistory.push(recent)
     if (this.recentHistory.length > 3) this.recentHistory.shift()
 
@@ -106,7 +125,7 @@ export class NoteTracker {
       this.candidate = null
       this.misses = 0
       events.push({ type: 'onset', time: onset })
-    } else if (this.phase !== 'idle' && recent < this.p.releaseRms) {
+    } else if (this.phase !== 'idle' && recent < release) {
       this.phase = 'idle'
       this.candidate = null
       this.heldMidi = null
@@ -118,10 +137,13 @@ export class NoteTracker {
     // --- pitch
     let reading: { midi: number; freq: number; clarity: number } | null = null
     const ignoring = this.phase === 'attack' && time - this.onsetTime < this.p.attackIgnore
-    if (!ignoring && recent >= this.p.releaseRms) {
+    if (!ignoring && recent >= release) {
       const r = this.detector.detect(buf, this.sampleRate)
-      if (r && r.freq >= this.p.minFreq && r.freq <= this.p.maxFreq && r.clarity >= clarityThreshold(r.freq)) {
-        reading = { midi: freqToMidiFloat(r.freq), freq: r.freq, clarity: r.clarity }
+      if (r && r.freq >= this.p.minFreq && r.freq <= this.p.maxFreq) {
+        const midi = freqToMidiFloat(r.freq)
+        let min = clarityThreshold(r.freq, this.p.clarity)
+        if (Math.round(midi) === this.expected) min = Math.min(min, this.p.expectedClarity)
+        if (r.clarity >= min) reading = { midi, freq: r.freq, clarity: r.clarity }
       }
     }
     this.live.midi = reading?.midi ?? null
@@ -141,6 +163,9 @@ export class NoteTracker {
         this.misses = 0
         this.candidateFreq = reading!.freq
         this.candidateCents = cents
+      } else if (usable && this.candidate !== null && this.candidate === this.expected && ++this.misses <= 1) {
+        // a nota esperada não cede a uma leitura intrusa isolada (mistura com
+        // outra corda soando)
       } else if (usable) {
         this.candidate = nearest
         this.candidateSince = time
@@ -151,7 +176,8 @@ export class NoteTracker {
         this.candidate = null
       }
 
-      if (this.candidate !== null && time - this.candidateSince >= this.p.stableTime) {
+      const stable = this.candidate === this.expected ? this.p.expectedStableTime : this.p.stableTime
+      if (this.candidate !== null && time - this.candidateSince >= stable) {
         events.push({
           type: 'note',
           midi: this.candidate,
@@ -166,6 +192,24 @@ export class NoteTracker {
     }
     this.live.heldMidi = this.heldMidi
     return events
+  }
+
+  /**
+   * Quão abrupta é a subida de energia nas amostras novas: a maior razão entre
+   * dois blocos vizinhos de ~10 ms. Um toque salta de uma vez; a nota que só
+   * incha (corda encostada e solta, batimento) sobe devagar. Medido dentro da
+   * janela, não depende da taxa de leitura.
+   */
+  private sharpness(buf: Float32Array, newSamples: number): number {
+    const n = buf.length
+    const b = this.p.sharpBlock
+    let best = 0
+    for (let i = Math.max(b, n - newSamples - b); i + b <= n; i += 64) {
+      const before = rms(buf, i - b, i)
+      const after = rms(buf, i, i + b)
+      best = Math.max(best, after / Math.max(before, this.release / 4))
+    }
+    return best
   }
 
   /** Estima o instante do ataque dentro das amostras novas deste buffer. */

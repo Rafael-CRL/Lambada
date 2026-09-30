@@ -42,8 +42,9 @@ function render(plucks: Pluck[], seconds: number, noise = 0.0005): Float32Array 
   return out
 }
 
-function run(signal: Float32Array, size: number = DETECTION.bufferSize): TrackerEvent[] {
+function run(signal: Float32Array, size: number = DETECTION.bufferSize, expected: number | null = null): TrackerEvent[] {
   const tracker = new NoteTracker(createPitchDetector(), SR)
+  tracker.expected = expected
   const events: TrackerEvent[] = []
   for (let end = size; end <= signal.length; end += HOP) {
     events.push(...tracker.process(signal.subarray(end - size, end), end / SR))
@@ -71,10 +72,38 @@ describe('detecção de notas', () => {
   })
 
   test('mesma nota tocada de novo gera novo evento', () => {
-    const ev = run(render([{ at: 0.2, note: 'G3', decay: 2 }, { at: 0.7, note: 'G3', decay: 2 }], 1.3))
+    // o dedo apoia na corda antes de tocar de novo e abafa a vibração (nas
+    // gravações de nota repetida, a energia salta mais de 7× em 5 ms)
+    const ev = run(render([{ at: 0.2, note: 'G3', decay: 2, duration: 0.48 }, { at: 0.7, note: 'G3', decay: 2 }], 1.3))
     const n = notes(ev)
     expect(n.map((x) => x.midi)).toEqual([m('G3'), m('G3')])
     expect(Math.abs(n[1].onsetTime - 0.7)).toBeLessThan(0.01)
+  })
+
+  test('nota que só incha (dedo encostando e soltando a corda) não é toque novo', () => {
+    const signal = render([{ at: 0.2, note: 'E3', decay: 0.6 }], 1.4)
+    // cai a um quarto em 60 ms e volta em 60 ms, sem ataque
+    for (let i = 0; i < signal.length; i++) {
+      const t = i / SR - 0.8
+      signal[i] *= t < 0 ? 1 : t < 0.06 ? 1 - 12.5 * t : t < 0.12 ? 0.25 + 12.5 * (t - 0.06) * 2.4 : 2
+    }
+    expect(notes(run(signal)).map((x) => x.midi)).toEqual([m('E3')])
+  })
+
+  test.each([
+    ['A3', 'G3'],
+    ['G3', 'G2'],
+    ['G2', 'G3'],
+    ['D4', 'G3'],
+  ])('esperando %s, tocar %s não vira a esperada', (expected, played) => {
+    const ev = run(render([{ at: 0.2, note: played }], 1), DETECTION.bufferSize, m(expected))
+    expect(notes(ev).map((x) => x.midi)).toEqual([m(played)])
+  })
+
+  test('num lugar com ruído, a nota é reconhecida e acaba (o fim acompanha o ruído de fundo)', () => {
+    const ev = run(render([{ at: 0.4, note: 'G3', decay: 0.25 }], 3, 0.02))
+    expect(notes(ev).map((x) => x.midi)).toEqual([m('G3')])
+    expect(ev.some((e) => e.type === 'release' && e.time > 0.5)).toBe(true)
   })
 
   test('sequência de notas diferentes', () => {

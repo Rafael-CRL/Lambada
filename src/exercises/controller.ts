@@ -134,7 +134,7 @@ export abstract class Controller {
     const dt = this.lastFrame === null ? 0 : Math.min(0.1, Math.max(0, now - this.lastFrame))
     this.lastFrame = now
     if (this.d.mic) {
-      const events = this.d.mic.poll()
+      const events = this.d.mic.poll(this.target()?.midi ?? null)
       if (!this.clock.paused && !this.finished) for (const e of events) this.onMic(e)
     }
     if (!this.clock.paused && !this.finished) this.update(now, dt)

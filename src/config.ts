@@ -17,6 +17,15 @@ export const DETECTION = {
   ],
   /** Tempo que a nota precisa ficar estável para ser aceita (s). Nas gravações reais, 90 ms perdia notas rápidas e 70 ms ainda perdia várias. */
   stableTime: 0.06,
+  /**
+   * A nota que o exercício espera: clarity mínima e estabilidade (s). Com
+   * outra corda soando (Ré4 e Fá4 com cordas soltas na escala rápida), a
+   * clarity cai para ~0,8 e a nota limpa dura ~40 ms. Nas gravações, simulando
+   * o exercício, os erros caíram de 32 para 15; com a esperada errada de
+   * propósito, as notas "ouvidas" sem ser tocadas foram de 15 para 21 em 2832.
+   */
+  expectedClarity: 0.7,
+  expectedStableTime: 0.04,
   /** Tolerância de afinação para considerar "o mesmo semitom" (cents). */
   centsTolerance: 45,
   /** Ignorar o pitch logo após o ataque (s). */
@@ -25,10 +34,25 @@ export const DETECTION = {
   onsetMinRms: 0.012,
   /** Salto relativo de energia que caracteriza um novo ataque. */
   onsetRatio: 1.9,
+  /**
+   * Subida mínima de energia entre dois blocos vizinhos (~10 ms) para ser toque
+   * (0 = não confere). Nas gravações reais, a nota que só incha (dedo
+   * encostando e soltando a corda) e o fantasma da corda solta sobem até ~3× e
+   * davam nota repetida ou a mais; os toques sobem mais. Blocos de ~5 ms
+   * perdiam o polegar nas cordas graves (ataque mais macio). Limite: um toque
+   * por cima de várias cordas soltas soando alto sobe pouco e se perde.
+   */
+  onsetSharpness: 3,
+  /** Tamanho desses blocos (amostras): ~1 período das notas graves; menor, a medida oscila com a fase. */
+  sharpBlock: 512,
   /** Intervalo mínimo entre ataques (s). */
   onsetRefractory: 0.08,
-  /** Abaixo disso a nota é considerada encerrada. */
-  releaseRms: 0.006,
+  /** Abaixo disso a nota é considerada encerrada (mínimo absoluto). */
+  releaseRms: 0.0035 as number,
+  /** Fim da nota: esta fração acima do ruído de fundo medido (0 = só o mínimo absoluto). */
+  releaseOverFloor: 1.6 as number,
+  /** Quanto o ruído de fundo estimado pode subir por segundo (fração). */
+  floorRise: 0.1 as number,
   /**
    * Metade da janela da energia recente (amostras). Janelas maiores tiravam
    * ataques falsos das notas graves, mas apagavam a pausa curta entre uma nota
@@ -39,9 +63,9 @@ export const DETECTION = {
   meterSmoothing: 0.75,
 } as const
 
-export function clarityThreshold(freq: number): number {
-  for (const band of DETECTION.clarity) if (freq < band.below) return band.min
-  return DETECTION.clarity[DETECTION.clarity.length - 1].min
+export function clarityThreshold(freq: number, bands: readonly { below: number; min: number }[] = DETECTION.clarity): number {
+  for (const band of bands) if (freq < band.below) return band.min
+  return bands[bands.length - 1].min
 }
 
 export const ADAPTIVE = {

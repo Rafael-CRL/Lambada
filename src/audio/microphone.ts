@@ -68,9 +68,13 @@ export class Microphone {
     return this.stream?.getAudioTracks()[0]?.label ?? 'violão simulado'
   }
 
-  /** Lê o analisador e devolve os eventos novos (tempos no relógio do app). */
-  poll(): TrackerEvent[] {
+  /**
+   * Lê o analisador e devolve os eventos novos (tempos no relógio do app).
+   * `expected`: a nota (MIDI soando) que o exercício espera agora, se houver.
+   */
+  poll(expected: number | null = null): TrackerEvent[] {
     const ctx = audioContext()
+    this.tracker.expected = expected
     this.analyser.getFloatTimeDomainData(this.buffer)
     const events = this.tracker.process(this.buffer, ctx.currentTime)
     const c = this.compensation
