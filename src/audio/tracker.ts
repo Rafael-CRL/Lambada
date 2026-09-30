@@ -95,8 +95,11 @@ export class NoteTracker {
     this.lastTime = time
 
     // ruído de fundo: desce na hora com o som e sobe devagar (só o silêncio
-    // entre as notas o puxa para baixo); o fim da nota fica logo acima dele
-    this.floor = this.floor === 0 || recent < this.floor ? recent : Math.min(recent, this.floor * (1 + this.p.floorRise * dt))
+    // entre as notas o puxa para baixo); o fim da nota fica logo acima dele.
+    // Uma travada longa (aba em segundo plano) não conta como tempo de subida:
+    // senão o ruído pula para o nível da nota que estiver soando.
+    const rise = this.p.floorRise * Math.min(dt, 0.1)
+    this.floor = this.floor === 0 || recent < this.floor ? recent : Math.min(recent, this.floor * (1 + rise))
     const release = Math.max(this.p.releaseRms, this.floor * this.p.releaseOverFloor)
     this.release = release
 

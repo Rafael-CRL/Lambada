@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, renameSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -21,6 +21,9 @@ function fixtures(): Plugin {
         // o servidor escuta a rede (Docker); gravar e apagar, só desta máquina
         const host = (req.headers.host ?? '').replace(/:\d+$/, '')
         if (host !== 'localhost' && host !== '127.0.0.1') return fail(403)
+        // e só das páginas do próprio app: outro site aberto no navegador também fala com localhost
+        const origin = req.headers.origin
+        if (origin && origin !== `http://${req.headers.host}`) return fail(403)
         const params = new URL(req.url ?? '', 'http://x').searchParams
         // sessao/: as tomadas da tela de teste da escala (fora do git e do teste)
         const dir = params.get('dir') === 'sessao' ? `${root}sessao/` : root
@@ -34,12 +37,17 @@ function fixtures(): Plugin {
           res.setHeader('Content-Type', 'application/json')
           return res.end(JSON.stringify(names))
         }
+        // descartar guarda em descartadas/ (fora do git), para dar para recuperar
         if (req.method === 'DELETE') {
           const name = params.get('name') ?? ''
           if (!/^[a-z0-9-]+$/.test(name)) return fail(400)
           try {
-            rmSync(`${dir}${name}.wav`, { force: true })
-            rmSync(`${dir}${name}.json`, { force: true })
+            const to = `${dir}descartadas/`
+            mkdirSync(to, { recursive: true })
+            // o nome volta a ficar livre na pasta principal: não sobrescrever um descarte antigo
+            const kept = existsSync(`${to}${name}.json`) ? `${name}-${Date.now()}` : name
+            for (const ext of ['wav', 'json'])
+              if (existsSync(`${dir}${name}.${ext}`)) renameSync(`${dir}${name}.${ext}`, `${to}${kept}.${ext}`)
             return res.end()
           } catch {
             return fail(500)

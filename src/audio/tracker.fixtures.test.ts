@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { DETECTION } from '../config'
 import type { TakeRecord } from '../dev/takes'
@@ -14,14 +14,18 @@ import { decodeWav, encodeWav } from './wav'
 
 const DIR = new URL('./fixtures/', import.meta.url)
 
+/** Sem a pasta, não há o que testar. Um `.json` quebrado falha o teste, não some. */
 function fixtures(): TakeRecord[] {
-  try {
-    return readdirSync(DIR)
-      .filter((f) => f.endsWith('.json'))
-      .map((f) => JSON.parse(readFileSync(new URL(f, DIR), 'utf8')) as TakeRecord)
-  } catch {
-    return []
-  }
+  if (!existsSync(DIR)) return []
+  return readdirSync(DIR)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => {
+      try {
+        return JSON.parse(readFileSync(new URL(f, DIR), 'utf8')) as TakeRecord
+      } catch (e) {
+        throw new Error(`fixtures/${f}: ${String(e)}`)
+      }
+    })
 }
 
 /**
