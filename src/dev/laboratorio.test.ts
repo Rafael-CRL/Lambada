@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { test } from 'vitest'
 import { fileURLToPath } from 'node:url'
-import { archiveReport } from './detection-history'
+import { archiveReport, writeOverview } from './detection-history'
 import { createPitchDetector } from '../audio/pitch'
 import { NoteTracker } from '../audio/tracker'
 import { decodeWav } from '../audio/wav'
@@ -307,7 +307,12 @@ test.skipIf(!env.RELATORIO)(
       gravacoes,
     }
     const order = archiveReport(fileURLToPath(new URL('../../', import.meta.url)), out, env.RODADA)
-    console.log(`Rodada ${order} salva em docs/deteccao/historico/; resumo em historico/README.md`)
+    console.log(`Rodada ${order} salva em docs/deteccao/historico/; resumo em historico/RESULTADOS.md`)
   },
   3_600_000,
 )
+
+// Regera a documentação a partir das rodadas salvas, sem executar ou criar outra rodada.
+test.skipIf(!env.HISTORICO)('apresentação do histórico', () => {
+  writeOverview(fileURLToPath(new URL('../../', import.meta.url)))
+})

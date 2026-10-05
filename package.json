@@ -9,7 +9,8 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:detector": "RELATORIO=1 vitest run src/dev/laboratorio.test.ts"
+    "test:detector": "RELATORIO=1 vitest run src/dev/laboratorio.test.ts",
+    "test:detector:resumo": "HISTORICO=1 vitest run src/dev/laboratorio.test.ts"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",

@@ -84,12 +84,68 @@ function total(report: DetectionReport, mode: string, ids?: Set<string>) {
 const percent = (n: number | null) => n === null ? '—' : `${n.toFixed(2)}%`
 const safe = (s: string) => s.replace(/[\r\n|]/g, ' ')
 
+/** Séries sobre um conjunto comum confirmado por hashes, sem misturar leituras diferentes. */
+function chartData(rounds: Round[]) {
+  const first = rounds.find((r) => r.arquivos !== null)
+  if (!first) return { rounds: [], ids: new Set<string>() }
+  const compatible = rounds.filter((r) => r.arquivos !== null && r.metodo === first.metodo &&
+    JSON.stringify(r.relatorio.leituras) === JSON.stringify(first.relatorio.leituras))
+  const ids = new Set(first.relatorio.gravacoes.filter((a) => !a.revisar && compatible.every((r) =>
+    r.relatorio.gravacoes.some((b) => !b.revisar && b.id === a.id &&
+      JSON.stringify(b.esperado) === JSON.stringify(a.esperado) && r.arquivos![b.id] === first.arquivos![a.id]),
+  )).map((r) => r.id))
+  return { rounds: compatible, ids }
+}
+
+export function chartSvg(rounds: Round[], metric: 'accuracy' | 'errors'): string {
+  const data = chartData(rounds)
+  const title = metric === 'accuracy' ? 'Acerto por rodada (%)' : 'Erros por rodada'
+  const series = ['sozinho', 'exercicio'].map((mode) => data.rounds.map((r) => total(r.relatorio, mode, data.ids)))
+  const values = series.flat().map((s) => metric === 'accuracy' ? s.accuracy ?? 0 : s.errors)
+  const min = metric === 'accuracy' ? Math.min(0, ...values) : 0
+  const max = metric === 'accuracy' ? 100 : Math.max(1, ...values) * 1.1
+  const x = (i: number) => data.rounds.length <= 1 ? 435 : 85 + i * 700 / (data.rounds.length - 1)
+  const y = (n: number) => 340 - (n - min) / (max - min) * 230
+  const colors = ['#0369a1', '#a21caf']
+  const svg = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 420" role="img" aria-labelledby="title desc">`,
+    `<title id="title">${title}</title>`,
+    `<desc id="desc">Resultados offline em ${data.ids.size} gravações comuns com hashes confirmados. Azul: sozinho. Roxo: exercício. Rodadas: ${data.rounds.map((r) => r.ordem).join(', ')}. Os valores também estão nas tabelas do documento.</desc>`,
+    '<rect width="860" height="420" fill="#ffffff"/>',
+    '<g font-family="sans-serif" font-size="14" fill="#172554">',
+    `<text x="85" y="35" font-size="22">${title}</text>`,
+    `<text x="85" y="62">${data.ids.size} gravações comuns • avaliação offline</text>`,
+    '<text x="580" y="62" fill="#0369a1">● Sozinho</text><text x="690" y="62" fill="#a21caf">◆ Exercício</text>']
+  if (!data.ids.size || !data.rounds.length) svg.push('<text x="85" y="200">Sem gravações comuns confirmadas para gerar o gráfico.</text>')
+  else {
+    for (let tick = 0; tick <= 4; tick++) {
+      const value = min + (max - min) * tick / 4
+      svg.push(`<path d="M85 ${y(value)}H785" stroke="#cbd5e1"/><text x="72" y="${y(value) + 5}" text-anchor="end">${value.toFixed(1)}</text>`)
+    }
+    data.rounds.forEach((r, i) => svg.push(`<text x="${x(i)}" y="370" text-anchor="middle">${r.ordem}</text>`))
+    series.forEach((items, j) => {
+      const ns = items.map((s) => metric === 'accuracy' ? s.accuracy ?? 0 : s.errors)
+      svg.push(`<polyline points="${ns.map((n, i) => `${x(i)},${y(n)}`).join(' ')}" fill="none" stroke="${colors[j]}" stroke-width="3"${j ? ' stroke-dasharray="7 4"' : ''}/>`)
+      ns.forEach((n, i) => svg.push(j
+        ? `<path d="M${x(i)} ${y(n) - 6}l6 6 -6 6 -6 -6Z" fill="${colors[j]}"/>`
+        : `<circle cx="${x(i)}" cy="${y(n)}" r="5" fill="${colors[j]}"/>`))
+    })
+    svg.push('<text x="435" y="405" text-anchor="middle">Ordem da rodada</text>')
+  }
+  return [...svg, '</g></svg>', ''].join('\n')
+}
+
 export function overview(rounds: Round[]): string {
   const lines = ['# Histórico da detecção de áudio', '',
     'Rodadas em ordem de execução; cada JSON preserva os resultados completos. As datas são informativas. Rodadas antigas importadas são identificadas; não reconstruímos execuções que não foram salvas.', '',
     'Os totais excluem `revisar/`. Acerto = 100 × (1 − distância de edição / notas esperadas em todas as leituras). Notas extras também contam como erro; este índice não mede precisão temporal nem qualidade em outros instrumentos ou ambientes.', '',
     '| Rodada | Data UTC | Versão | Gravações | Sozinho: erros / notas | Acerto | Exercício: erros / notas | Acerto | Risco: falsos / casos | Descrição |',
     '|---|---|---|---|---|---|---|---|---|---|']
+  const chart = chartData(rounds)
+  lines.splice(6, 0, '## Gráficos', '',
+    `As curvas usam ${chart.ids.size} gravações comuns nas rodadas com hashes e leituras compatíveis (${chart.rounds.map((r) => r.ordem).join(', ') || 'nenhuma'}). Relatórios importados sem hashes aparecem apenas nas tabelas. Uma rodada com outras leituras fica fora destas curvas.`, '',
+    '![Acerto por rodada: sozinho e exercício](graficos/acertos.svg)', '',
+    '![Erros por rodada: sozinho e exercício](graficos/erros.svg)', '',
+    '## Resultados por rodada', '')
   for (const round of rounds) {
     const solo = total(round.relatorio, 'sozinho'), exercise = total(round.relatorio, 'exercicio')
     const version = round.versao.commit?.slice(0, 7) ?? 'não registrada'
@@ -154,8 +210,19 @@ export function archiveReport(root: string, report: DetectionReport, description
       metodo: METHOD, relatorio: JSON.parse(readFileSync(previous, 'utf8')) as DetectionReport })
     append({ schema: 1, origem: 'laboratorio', descricao: description, versao: codeVersion(root),
       arquivos: recordingHashes(join(root, 'src/audio/fixtures'), report.gravacoes.map((r) => r.id)), metodo: METHOD, relatorio: report })
-    writeFileSync(join(dir, 'README.md'), overview(rounds))
+    writeOverview(root)
     writeFileSync(previous, JSON.stringify(report, null, 1) + '\n')
     return rounds.at(-1)!.ordem
   } finally { rmSync(lock, { recursive: true }) }
+}
+
+/** Atualiza apenas a apresentação; não cria nem altera registros de rodadas. */
+export function writeOverview(root: string) {
+  const dir = join(root, 'docs/deteccao/historico')
+  const rounds = readRounds(dir)
+  mkdirSync(join(dir, 'graficos'), { recursive: true })
+  writeFileSync(join(dir, 'RESULTADOS.md'), overview(rounds))
+  writeFileSync(join(dir, 'graficos/acertos.svg'), chartSvg(rounds, 'accuracy'))
+  writeFileSync(join(dir, 'graficos/erros.svg'), chartSvg(rounds, 'errors'))
+  writeFileSync(join(dir, 'README.md'), '# Histórico da detecção\n\nConsulte os [resultados dos testes, gráficos e comparações](RESULTADOS.md).\n\nOs JSONs numerados preservam cada rodada completa.\n')
 }

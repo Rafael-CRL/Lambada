@@ -25,7 +25,7 @@ docker compose run --rm -e RODADA="Descrição da mudança avaliada" app npm run
 ## Histórico a partir de agora
 
 O comando acima salva uma rodada completa, numerada em ordem crescente, em
-[`docs/deteccao/historico/`](docs/deteccao/historico/README.md). Os arquivos
+[`docs/deteccao/historico/`](docs/deteccao/historico/RESULTADOS.md). Os arquivos
 `0001.json`, `0002.json` etc. permanecem intactos. `dados.json` continua sendo
 um atalho para a última rodada. O resumo em Markdown apresenta todas as rodadas
 em ordem e compara a primeira com a última, sobre gravações comuns e condições
@@ -46,7 +46,7 @@ gravação, além de todos os resultados detalhados. Sem Git no ambiente,
 As gravações de `revisar/` são preservadas no JSON, mas excluídas dos totais.
 
 Execute `test:detector` para cada versão que quiser comparar e inclua os novos
-JSONs, `historico/README.md` e `dados.json` no commit da mudança. Rodadas podem
+JSONs, `historico/RESULTADOS.md`, `historico/graficos/` e `dados.json` no commit da mudança. Rodadas podem
 mostrar regressão ou resultado igual; nenhuma é descartada por isso. O comando
 usa um contêiner temporário e não abre outra porta. Com o serviço já rodando,
 pode usar `docker compose exec -e RODADA="Descrição" app npm run test:detector`.
@@ -62,6 +62,18 @@ remova `historico/.lock` somente depois de confirmar que não há relatório rod
 O histórico mede detecção offline neste conjunto de gravações reais. Ele não
 substitui validação ao vivo nem comprova desempenho em outros violões,
 microfones ou ambientes. O resumo informa a métrica e suas limitações.
+
+Os gráficos SVG de acertos e erros são gerados automaticamente e aparecem em
+`historico/RESULTADOS.md`. Usam somente rodadas com hashes registrados, com as
+mesmas leituras e arquivos em comum. Os resultados importados permanecem nas
+tabelas. Cada ponto representa uma rodada, independentemente da data.
+
+Para atualizar somente o documento e os gráficos a partir dos JSONs existentes,
+sem executar o detector ou criar uma rodada:
+
+```
+docker compose run --rm app npm run test:detector:resumo
+```
 
 ## Setup
 

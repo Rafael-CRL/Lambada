@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 420" role="img" aria-labelledby="title desc">
+<title id="title">Acerto por rodada (%)</title>
+<desc id="desc">Resultados offline em 30 gravações comuns com hashes confirmados. Azul: sozinho. Roxo: exercício. Rodadas: 2, 3. Os valores também estão nas tabelas do documento.</desc>
+<rect width="860" height="420" fill="#ffffff"/>
+<g font-family="sans-serif" font-size="14" fill="#172554">
+<text x="85" y="35" font-size="22">Acerto por rodada (%)</text>
+<text x="85" y="62">30 gravações comuns • avaliação offline</text>
+<text x="580" y="62" fill="#0369a1">● Sozinho</text><text x="690" y="62" fill="#a21caf">◆ Exercício</text>
+<path d="M85 340H785" stroke="#cbd5e1"/><text x="72" y="345" text-anchor="end">0.0</text>
+<path d="M85 282.5H785" stroke="#cbd5e1"/><text x="72" y="287.5" text-anchor="end">25.0</text>
+<path d="M85 225H785" stroke="#cbd5e1"/><text x="72" y="230" text-anchor="end">50.0</text>
+<path d="M85 167.5H785" stroke="#cbd5e1"/><text x="72" y="172.5" text-anchor="end">75.0</text>
+<path d="M85 110H785" stroke="#cbd5e1"/><text x="72" y="115" text-anchor="end">100.0</text>
+<text x="85" y="370" text-anchor="middle">2</text>
+<text x="785" y="370" text-anchor="middle">3</text>
+<polyline points="85,145.54843304843305 785,145.54843304843305" fill="none" stroke="#0369a1" stroke-width="3"/>
+<circle cx="85" cy="145.54843304843305" r="5" fill="#0369a1"/>
+<circle cx="785" cy="145.54843304843305" r="5" fill="#0369a1"/>
+<polyline points="85,137.27564102564102 785,137.27564102564102" fill="none" stroke="#a21caf" stroke-width="3" stroke-dasharray="7 4"/>
+<path d="M85 131.27564102564102l6 6 -6 6 -6 -6Z" fill="#a21caf"/>
+<path d="M785 131.27564102564102l6 6 -6 6 -6 -6Z" fill="#a21caf"/>
+<text x="435" y="405" text-anchor="middle">Ordem da rodada</text>
+</g></svg>

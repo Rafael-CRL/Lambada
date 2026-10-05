@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, test } from 'vitest'
-import { archiveReport, overview, readRounds } from './detection-history'
+import { archiveReport, chartSvg, overview, readRounds } from './detection-history'
 import type { DetectionReport, Round } from './detection-history'
 
 const dirs: string[] = []
@@ -45,7 +45,9 @@ describe('histórico do detector', () => {
     expect(rounds[1].arquivos?.escala).toMatch(/^[a-f0-9]{64}$/)
     expect(rounds[1].versao.codigoSha256).toMatch(/^[a-f0-9]{64}$/)
     expect(JSON.parse(readFileSync(join(root, 'docs/deteccao/dados.json'), 'utf8'))).toEqual(report(0))
-    expect(readFileSync(join(path, 'README.md'), 'utf8')).toContain('rodadas 1 e 3')
+    expect(readFileSync(join(path, 'RESULTADOS.md'), 'utf8')).toContain('rodadas 1 e 3')
+    expect(readFileSync(join(path, 'graficos/acertos.svg'), 'utf8')).toContain('<svg')
+    expect(readFileSync(join(path, 'README.md'), 'utf8')).toContain('(RESULTADOS.md)')
   })
   test('começa em 1 sem relatório anterior e identifica alterações no áudio e gabarito', () => {
     const root = workspace()
@@ -72,6 +74,14 @@ describe('histórico do detector', () => {
     last.relatorio.leituras = first.relatorio.leituras
     last.relatorio.gravacoes[0].esperado = ['E2', 'B2']
     expect(overview([first, last])).toContain('Sem comparação direta')
+  })
+  test('gráficos usam somente rodadas e gravações confirmadas', () => {
+    const imported = round(1, 2); imported.arquivos = null
+    const second = round(2, 1), third = round(3, 0)
+    expect(chartSvg([imported, second, third], 'accuracy')).toContain('Rodadas: 2, 3')
+    expect(chartSvg([second, third], 'errors')).toContain('1 gravações comuns')
+    third.arquivos = { escala: 'outro arquivo' }
+    expect(chartSvg([second, third], 'errors')).toContain('Sem gravações comuns confirmadas')
   })
   test('avisa quando a comparação com um relatório importado é provisória', () => {
     const first = round(1, 1); first.arquivos = null
