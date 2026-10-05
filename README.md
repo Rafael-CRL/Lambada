@@ -40,3 +40,10 @@ Testes: `docker compose exec app npx vitest run`.
 - [NOTAS-DO-PROJETO.md](NOTAS-DO-PROJETO.md): decisões e armadilhas do código.
 
 [pitchy]: https://github.com/ianprime0509/pitchy
+
+Para acompanhar a evolução da detecção de áudio, execute
+`docker compose run --rm -e RODADA="Descrição da mudança" app npm run test:detector`.
+Cada rodada preserva resultados, versão e hashes dos arquivos. O
+[histórico de detecção](docs/deteccao/historico/README.md) mostra a ordem das
+rodadas e a comparação entre primeira e última. Detalhes em
+[DETECCAO-DADOS.md](DETECCAO-DADOS.md).

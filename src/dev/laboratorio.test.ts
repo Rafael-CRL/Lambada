@@ -1,5 +1,7 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { test } from 'vitest'
+import { fileURLToPath } from 'node:url'
+import { archiveReport } from './detection-history'
 import { createPitchDetector } from '../audio/pitch'
 import { NoteTracker } from '../audio/tracker'
 import { decodeWav } from '../audio/wav'
@@ -15,7 +17,7 @@ import { defaultSpelling, midiOf, noteId, parseNote } from '../domain/notes'
  *   DUMP=escala-solta-3:8.0-9.0 [ESPERADA=D4]              cada leitura (60 Hz) no trecho
  *   VARREDURA='{"atual":{},"s2.5":{"onsetSharpness":2.5}}'  erros por variante, sozinho e no exercício
  *     (+ SO='^escala-solta' filtra as gravações; RISCO=1 mede o risco com a esperada errada)
- *   RELATORIO=1                                             reescreve docs/deteccao/dados.json
+ *   RELATORIO=1                                             arquiva uma rodada + atualiza dados.json (RODADA="descrição" opcional)
  *
  * Ex.: docker compose exec -e GRAVACAO=escala-solta-3 -e EXERCICIO=1 app npx vitest run src/dev/laboratorio.test.ts
  * Nomes são relativos a `fixtures/` (`revisar/…`, `sessao/…` para as subpastas).
@@ -304,7 +306,8 @@ test.skipIf(!env.RELATORIO)(
       risco: risk(tested, DETECTION),
       gravacoes,
     }
-    writeFileSync(new URL('../../docs/deteccao/dados.json', import.meta.url), JSON.stringify(out, null, 1) + '\n')
+    const order = archiveReport(fileURLToPath(new URL('../../', import.meta.url)), out, env.RODADA)
+    console.log(`Rodada ${order} salva em docs/deteccao/historico/; resumo em historico/README.md`)
   },
   3_600_000,
 )

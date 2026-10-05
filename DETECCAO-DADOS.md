@@ -8,7 +8,7 @@ Toda medição tem uma fonte: o que for gerado pelo laboratório é reproduzíve
 
 | O quê | Onde | Observação |
 |---|---|---|
-| Gravações do teste (32) | `src/audio/fixtures/*.wav` + `.json` | WAV mono, 16 bits, 48 kHz. O `.json` é o gabarito (`expected`: notas soando, em ordem), `how`, `obs` e `live` (o que o detector **da época** ouviu ao vivo; não é gabarito) |
+| Gravações do teste (30) | `src/audio/fixtures/*.wav` + `.json` | WAV mono, 16 bits, 48 kHz. O `.json` é o gabarito (`expected`: notas soando, em ordem), `how`, `obs` e `live` (o que o detector **da época** ouviu ao vivo; não é gabarito) |
 | Gravações a confirmar (2) | `src/audio/fixtures/revisar/` | toque fraco; fora do teste até confirmar a execução |
 | Tomadas brutas desta sessão | `src/audio/fixtures/sessao/` | **fora do git** (só neste computador): escala-1…7 como gravadas, incluindo a de 8 voltas contínua (121 s) e o começo interrompido (escala-6) |
 | Descartadas antigas | `src/audio/fixtures/descartadas/` | fora do git; 2 s e 0,6 s sem som útil |
@@ -16,11 +16,52 @@ Toda medição tem uma fonte: o que for gerado pelo laboratório é reproduzíve
 | Linha de base | [`docs/deteccao/inicial-35ce63a.json`](docs/deteccao/inicial-35ce63a.json) | o detector do commit `35ce63a` sobre as mesmas gravações (só o modo sozinho: não havia nota esperada) |
 | Laboratório | `src/dev/laboratorio.test.ts` | gera `dados.json` e faz as análises (ver o cabeçalho do arquivo) |
 
-Gerar de novo (com o detector atual):
+Gerar uma rodada completa (com o detector atual), preservando o histórico:
 
 ```
-docker compose exec -e RELATORIO=1 app npx vitest run src/dev/laboratorio.test.ts
+docker compose run --rm -e RODADA="Descrição da mudança avaliada" app npm run test:detector
 ```
+
+## Histórico a partir de agora
+
+O comando acima salva uma rodada completa, numerada em ordem crescente, em
+[`docs/deteccao/historico/`](docs/deteccao/historico/README.md). Os arquivos
+`0001.json`, `0002.json` etc. permanecem intactos. `dados.json` continua sendo
+um atalho para a última rodada. O resumo em Markdown apresenta todas as rodadas
+em ordem e compara a primeira com a última, sobre gravações comuns e condições
+compatíveis. Está pronto para consulta no GitHub quando os arquivos forem commitados.
+
+Na primeira execução, o relatório que já existia é preservado como rodada 1,
+identificado como histórico importado. Não atribuímos a ele uma versão ou hashes
+que não foram registrados na época. A comparação com esse relatório é marcada
+como provisória. Após duas rodadas novas, o resumo também compara a primeira
+rodada com hashes com a última, para acompanhar a evolução com arquivos confirmados.
+A linha de base `inicial-35ce63a.json` permanece disponível
+separadamente; não inventamos uma data ou uma execução completa para ela.
+
+Cada rodada nova registra data UTC, descrição (`RODADA`), commit e branch,
+parâmetros, hash do código/dependências e hashes do áudio e gabarito de cada
+gravação, além de todos os resultados detalhados. Sem Git no ambiente,
+`alterado` fica `null`; o hash do código ainda identifica o conteúdo testado.
+As gravações de `revisar/` são preservadas no JSON, mas excluídas dos totais.
+
+Execute `test:detector` para cada versão que quiser comparar e inclua os novos
+JSONs, `historico/README.md` e `dados.json` no commit da mudança. Rodadas podem
+mostrar regressão ou resultado igual; nenhuma é descartada por isso. O comando
+usa um contêiner temporário e não abre outra porta. Com o serviço já rodando,
+pode usar `docker compose exec -e RODADA="Descrição" app npm run test:detector`.
+
+A suíte normal (`npm test`) verifica regressões e não cria rodadas. Explorações
+com `GRAVACAO`, `DUMP` ou `VARREDURA` continuam diagnósticas: para preservar os
+resultados oficiais de uma mudança, rode a avaliação completa acima. `SO`
+filtra o conjunto; o resumo evita comparar totais de conjuntos diferentes.
+Uma execução incompleta não gera rodada. Não rode dois relatórios ao mesmo tempo;
+um bloqueio impede escritores concorrentes. Se o processo for encerrado à força,
+remova `historico/.lock` somente depois de confirmar que não há relatório rodando.
+
+O histórico mede detecção offline neste conjunto de gravações reais. Ele não
+substitui validação ao vivo nem comprova desempenho em outros violões,
+microfones ou ambientes. O resumo informa a métrica e suas limitações.
 
 ## Setup
 
