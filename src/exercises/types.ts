@@ -142,6 +142,8 @@ export const TOPIC_TITLE: Record<Topic, string> = { teoria: 'Teoria musical', pa
 
 /** Configuração efetiva de uma sessão (o que o controlador lê). */
 export interface ExerciseConfig {
+  /** Partitura fixa da trilha: identifica a prática no histórico. */
+  guided?: { id: string; title: string }
   kind: 'score'
   activity: ActivityId
   input: InputKind
@@ -212,11 +214,12 @@ export function inputOf(config: ExerciseConfig | LegacyConfig): InputKind {
 /** Chave estável para comparar sessões parecidas. */
 export function modeKey(c: ExerciseConfig): string {
   const tempo = c.tempo === 'metronome' ? `metro-${c.level}-${c.bpm}` : 'free'
-  return `${c.activity}:${tempo}:${c.duration}`
+  return `${c.guided ? `study:${c.guided.id}` : c.activity}:${tempo}:${c.duration}`
 }
 
 export function exerciseTitle(config: ExerciseConfig | LegacyConfig): string {
   if (!isScoreConfig(config)) return inputOf(config) === 'mic' ? 'Violão' : 'Pauta'
+  if (config.guided) return `Estudo guiado · ${config.guided.title}`
   const a = activity(config.activity)
   return `${TOPIC_TITLE[a.topic]} · ${a.title}`
 }

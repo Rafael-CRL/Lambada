@@ -103,8 +103,13 @@ export function renderPiano(ctx: BaseAudioContext, midi: number): AudioBuffer {
 
 /** Toca a nota (MIDI soando) agora. */
 export function playNote(midi: number, timbre: Timbre = 'guitar', volume = 0.7) {
+  return scheduleNote(midi, audioContext().currentTime, undefined, timbre, volume)
+}
+
+/** Som agendado no relógio de áudio; devolve uma função que cancela também a cauda. */
+export function scheduleNote(midi: number, at: number, duration?: number, timbre: Timbre = 'guitar', volume = 0.7): () => void {
   const ctx = audioContext()
-  if (ctx.state !== 'running') return
+  if (ctx.state !== 'running') return () => {}
   const key = `${timbre}:${ctx.sampleRate}:${midi}`
   let buf = cache.get(key)
   if (!buf) {
@@ -115,9 +120,16 @@ export function playNote(midi: number, timbre: Timbre = 'guitar', volume = 0.7) 
     out = ctx.createGain()
     out.connect(ctx.destination)
   }
-  out.gain.value = volume
   const src = ctx.createBufferSource()
   src.buffer = buf
-  src.connect(out)
-  src.start()
+  const gain = ctx.createGain()
+  gain.gain.value = volume
+  src.connect(gain).connect(out)
+  const end = at + Math.min(duration ?? buf.duration, buf.duration)
+  gain.gain.setValueAtTime(volume, Math.max(at, end - 0.025))
+  gain.gain.linearRampToValueAtTime(0, end)
+  src.start(at)
+  src.stop(end)
+  src.onended = () => { src.disconnect(); gain.disconnect() }
+  return () => { try { src.stop() } catch { /* já terminou */ } }
 }

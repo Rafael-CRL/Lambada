@@ -2,14 +2,19 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import type { ReactNode } from 'react'
 import { navigate } from '../app/router'
 import { getLastPlace, loadTrail, type LastPlace, type TrailProgress } from '../db/db'
-import { startActivity, startLesson } from '../exercises/start'
+import { startActivity, startGuidedStudy, startLesson } from '../exercises/start'
 import { activity, TOPIC_TITLE, type Topic } from '../exercises/types'
 import { isLessonId, lesson, nextLesson, unitOf } from '../lessons/curriculum'
 import { IconArrowRight } from '../ui/icons'
+import { studyById } from '../guided/catalog'
 
 /** Para onde o "continuar" leva, e o que ele diz. */
 function resumeOf(last: LastPlace | null, trail: TrailProgress): { label: string; go: () => void } | null {
   if (!last) return null
+  if (last.kind === 'study') {
+    const study = studyById(last.id)
+    return study ? { label: `Estudo guiado · ${study.title}`, go: () => startGuidedStudy(study.id) } : null
+  }
   if (last.kind === 'activity') {
     const a = activity(last.id)
     return a.hidden ? null : { label: `${TOPIC_TITLE[a.topic]} · ${a.title}`, go: () => startActivity(a.id) }
@@ -29,10 +34,14 @@ export function Home() {
 
   return (
     <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-10">
-      <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-3">
+      <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-2">
         <TopicTile topic="teoria" subtitle="do zero, passo a passo" art={<TheoryArt />} />
         <TopicTile topic="pauta" subtitle="leitura e ritmo, à vontade" art={<StaffArt />} />
         <TopicTile topic="violao" subtitle="achar no braço" art={<FretArt />} />
+        <button type="button" onClick={() => navigate({ name: 'studies' })} className="group flex aspect-[4/3] flex-col items-center justify-center gap-5 rounded-2xl bg-surface/60 p-6 transition-colors duration-150 hover:bg-surface">
+          <span className="w-2/3 text-sub transition-colors duration-150 group-hover:text-accent"><StudyArt /></span>
+          <span className="flex flex-col items-center gap-1 text-center"><span className="text-2xl font-semibold tracking-tight sm:text-[1.7rem]">Estudo guiado</span><span className="text-sm text-sub">dos exercícios às primeiras peças</span></span>
+        </button>
       </div>
       {resume && (
         <button type="button" onClick={resume.go} className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-sub hover:text-text">
@@ -42,6 +51,17 @@ export function Home() {
       )}
     </div>
   )
+}
+
+function StudyArt() {
+  return <svg viewBox="0 0 120 56" className="w-full" aria-hidden="true">
+    <g fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <path d="M60 12C44 3 24 6 8 10v39c19-5 35-5 52 2 17-7 33-7 52-2V10c-16-4-36-7-52 2v39" />
+      <path d="M20 22h27M20 29h27M20 36h19" opacity={0.5} />
+      <path d="M87 34V15l15-3v18" />
+    </g>
+    <g fill="currentColor"><ellipse cx={82} cy={35} rx={5} ry={3.6} transform="rotate(-20 82 35)" /><ellipse cx={97} cy={31} rx={5} ry={3.6} transform="rotate(-20 97 31)" /></g>
+  </svg>
 }
 
 function TopicTile({ topic, subtitle, art }: { topic: Topic; subtitle: string; art: ReactNode }) {

@@ -14,6 +14,8 @@ import { cx } from '../ui/controls'
 import { IconChart, IconGear, IconMoon, IconSun } from '../ui/icons'
 import { navigate, useRoute, type Route } from './router'
 import { useSettings, useThemeSync } from './settings'
+import { StudyList } from '../guided/StudyList'
+import { StudyScreen } from '../guided/StudyScreen'
 
 // gravador dos testes do detector: fica fora do build de produção
 const RecorderScreen = import.meta.env.DEV ? lazy(() => import('../dev/RecorderScreen')) : null
@@ -31,10 +33,12 @@ export function App() {
     return <ExerciseScreen key={`${route.run}`} activityId={route.activity} />
   }
   if (route.name === 'lesson') return <LessonScreen key={`${route.lesson}-${route.run}`} lessonId={route.lesson} />
+  if (route.name === 'study') return <StudyScreen key={`${route.id}-${route.run}`} id={route.id} />
 
   return (
     <Shell route={route} theme={settings.theme}>
       {route.name === 'home' && <Home />}
+      {route.name === 'studies' && <StudyList />}
       {route.name === 'topic' && <ActivityList key={route.topic} topic={route.topic} />}
       {route.name === 'summary' && <Summary id={route.id} />}
       {route.name === 'guide' && <GuideScreen unit={route.unit} />}

@@ -11,6 +11,7 @@ Você lê a nota na pauta, toca no violão e o app ouve e responde na hora: no b
 - **Teoria musical:** trilha guiada do zero (notas na pauta, figuras, compasso, pausas, acidentes) com cartões, guias e desafios.
 - **Praticar:** leitura de notas e ritmo com metrônomo.
 - **Violão:** primeira posição, corda por corda. O microfone confere a nota (na oitava certa) e o tempo.
+- **Estudo guiado:** exercícios das páginas 26–34 de *Iniciação ao violão*, de Henrique Pinto, até Andante e Poco Andante (2/4 e 3/4). Escolha direta, partituras fixas, BPM, escuta e voltas. Exercícios de uma voz têm correção pelo microfone; arpejos e peças têm prática com metrônomo.
 
 O microfone avalia altura e tempo. Dedilhado, corda e qualidade do som, não, e o app não finge que avalia.
 

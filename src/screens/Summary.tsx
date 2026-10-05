@@ -4,7 +4,7 @@ import { navigate } from '../app/router'
 import { db, recordId, type SessionRecord } from '../db/db'
 import { namePt, parseNote } from '../domain/notes'
 import { SCALE_LABELS } from '../domain/scales'
-import { startActivity } from '../exercises/start'
+import { startActivity, startGuidedStudy } from '../exercises/start'
 import { exerciseSubtitle, exerciseTitle, isScoreConfig } from '../exercises/types'
 import { StaffSvg } from '../staff/StaffSvg'
 import { Button, cx, Kbd } from '../ui/controls'
@@ -32,7 +32,8 @@ async function loadSummary(id: number) {
 /** "De novo": a mesma atividade (sessões antigas voltam para o tópico). */
 function again(rec: SessionRecord) {
   const c = rec.config as unknown
-  if (isScoreConfig(c)) startActivity(c.activity)
+  if (isScoreConfig(c) && c.guided) startGuidedStudy(c.guided.id)
+  else if (isScoreConfig(c)) startActivity(c.activity)
   else navigate({ name: 'topic', topic: rec.input === 'mic' ? 'violao' : 'pauta' })
 }
 

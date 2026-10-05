@@ -5,10 +5,11 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 ## Produto
 
 - **Objetivo:** aprender a ler partitura (clave de sol: notas e ritmo) e achar as notas no braço do violão enquanto lê.
-- **Home:** três botões e uma linha discreta "continuar" (leva à próxima lição da trilha, ou à última atividade).
+- **Home:** quatro botões e uma linha discreta "continuar" (leva à próxima lição da trilha, à última atividade ou ao último estudo guiado).
   - **Teoria musical** (primeiro, a porta de entrada): a trilha guiada, sem instrumento.
   - **Praticar** (id `pauta` no código): prática livre (**Leitura** e **Ritmo**). Chamava "Pauta", que parecia assunto e não lugar de treinar. A lista da Teoria tem uma faixa fixa apontando para cá: o aluno não precisa voltar às lições para treinar.
   - **Violão**: a trilha **Primeira posição** e a prática (**Escala**, **Notas**, **Explorar**; o microfone confere). Notas tem o ajuste **Cordas** (uma, várias ou todas): o exercício de uma corda fora da lição, sem passar pela teoria de novo. **Repetição** existe no código, oculta (`hidden`); virou a parte "no tempo" das lições do violão.
+  - **Estudo guiado** (`#/estudos`): 49 práticas das páginas 26–34 do livro *Iniciação ao violão*, Henrique Pinto (24–32 do PDF consultado). Cordas graves → arpejos → agudas → alterações → Andante e Poco Andante (2/4 e 3/4). Cada linha e cada exemplo por corda é selecionável; filtros de exercícios e peças, sem bloqueios.
 - **Cada tópico abre uma lista curta** (nome + uma frase). Clicar = começar.
 - **Nenhuma configuração antes de começar.** Os ajustes são ícones no canto inferior direito da atividade, e cada um abre um balão pequeno. Ficam salvos por atividade.
   - Mudam sem reiniciar: som, BPM (Leitura), ♯♭.
@@ -68,6 +69,11 @@ Contexto e decisões que não aparecem no código. Leia antes de propor mudança
 - **Ritmo:** células (`q h w dh ee dqe qr hr wr`) em `src/domain/rhythm.ts`, compassos 2/4, 3/4, 4/4. Batida casa com o ataque livre mais próximo dentro da tolerância (`src/rhythm/judge.ts`); batida a mais desconta.
 
 ## Código
+
+- **`src/guided/`:** transcrição musical em `catalog.ts`, partituras fixas com baixo e melodia em `Score.tsx`, transporte em `controller.ts` e julgamento dos ataques em `judge.ts`. O PDF não integra o app. `order` resolve ritornelos e D.C. al Fine; Poco Andante toca A A B B A, sem novo ritornelo na volta. Exemplos de alterações não têm compasso no livro: usam pulsos iguais e nenhum número de compasso na pauta.
+  - Microfone só nos estudos de uma voz, livre ou no tempo. Arpejos e peças preservam a sobreposição das vozes, com escuta e metrônomo, sem atribuir acerto. As posições/dedos são orientações; a duração sustentada não é julgada.
+  - BPM 30–200 e 1/2/4 voltas completas; uma volta já contém as repetições escritas. Alterar ajustes encerra a tentativa e deixa a prática pronta para começar com nova contagem. Pausa cancela sons agendados e exclui eventos do microfone.
+  - Ajustes por estudo em `meta.study-options:<id>`; progresso em `meta.guided-progress`. Escuta não conta como prática; só microfone no tempo com ≥90% registra BPM dominado. Tentativas com microfone também entram no histórico, com `config.guided` e chave de sessão própria. Dó♭/Fá♭ e a 4ª casa são preservados nas transcrições sem mudar os conjuntos de notas das atividades existentes.
 
 - **`src/exercises/score.ts`:** a partitura rolando (Leitura, Notas, Escala e os segmentos "no tempo" das lições): tempo livre ou metrônomo; figuras por nível ou pelas células da lição.
 - **`src/lessons/`:** trilhas. `controller.ts` = lição de notas (botões, lugar ou microfone); `LessonScreen` orquestra cartões e segmentos.

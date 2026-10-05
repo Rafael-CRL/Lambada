@@ -1,6 +1,6 @@
 import { navigate, play } from '../app/router'
 import { ensureAudioRunning } from '../audio/clock'
-import { setLastActivity, setLastLesson } from '../db/db'
+import { db, setLastActivity, setLastLesson } from '../db/db'
 import type { Practice } from '../lessons/lessons'
 import type { ActivityId, ActivityOptions } from './types'
 
@@ -24,6 +24,12 @@ export function startLesson(id: string, replace = false) {
   void ensureAudioRunning()
   void setLastLesson(id)
   navigate({ name: 'lesson', lesson: id, run: Date.now() }, replace)
+}
+
+export function startGuidedStudy(id: string) {
+  void ensureAudioRunning()
+  void db.meta.put({ key: 'lastActivity', value: `study:${id}` })
+  navigate({ name: 'study', id, run: Date.now() })
 }
 
 /** Reinicia a atividade na tela (mantém os ajustes só desta vez). */

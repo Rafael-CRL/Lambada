@@ -9,6 +9,8 @@ import { NotePicker } from './picker'
  * violão, as da região, filtradas pelas da lição ou pelas cordas escolhidas.
  */
 export function sessionItems(config: ExerciseConfig, scale: ScaleId, accidentals: boolean): StudyItem[] {
+  // Partituras transcritas preservam grafias (inclusive Dó♭/Fá♭) e notas fora da região padrão.
+  if (config.guided && config.pool) return readingItems(config.pool, false)
   if (inputOf(config) === 'buttons' && (config.pool || config.notes)) return readingItems(config.pool ?? NOTE_SETS[config.notes!], accidentals)
   const items = unlockOrder(scaleItems(scale, accidentals))
   if (config.pool) return items.filter((i) => config.pool!.includes(i.id))

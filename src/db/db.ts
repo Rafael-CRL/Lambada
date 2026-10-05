@@ -124,12 +124,13 @@ export function unlockKey(input: InputKind, scale: ScaleId): string {
 }
 
 /** Onde o usuário parou: uma atividade ou uma lição de trilha. */
-export type LastPlace = { kind: 'activity'; id: ActivityId } | { kind: 'lesson'; id: string }
+export type LastPlace = { kind: 'activity'; id: ActivityId } | { kind: 'lesson'; id: string } | { kind: 'study'; id: string }
 
 export async function getLastPlace(): Promise<LastPlace | null> {
   const rec = await db.meta.get('lastActivity')
   const v = rec?.value
   if (typeof v !== 'string') return null
+  if (v.startsWith('study:')) return { kind: 'study', id: v.slice('study:'.length) }
   if (v.startsWith('lesson:')) return { kind: 'lesson', id: v.slice('lesson:'.length) }
   return isActivityId(v) ? { kind: 'activity', id: v } : null
 }

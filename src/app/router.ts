@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { isActivityId, type ActivityId, type Topic } from '../exercises/types'
 import { isLessonId } from '../lessons/curriculum'
+import { studyById } from '../guided/catalog'
 
 export type Route =
   | { name: 'home' }
@@ -13,12 +14,18 @@ export type Route =
   | { name: 'settings' }
   | { name: 'record' }
   | { name: 'scaleTest' }
+  | { name: 'studies' }
+  | { name: 'study'; id: string; run: number }
 
 export function parseHash(hash: string): Route {
   const [path, query = ''] = hash.replace(/^#\/?/, '').split('?')
   const parts = path.split('/').filter(Boolean)
   const run = Number(new URLSearchParams(query).get('run') ?? 0)
   switch (parts[0]) {
+    case 'estudos':
+      return { name: 'studies' }
+    case 'estudo':
+      return parts[1] && studyById(parts[1]) ? { name: 'study', id: parts[1], run } : { name: 'studies' }
     case 'play':
       return isActivityId(parts[1]) ? { name: 'play', activity: parts[1], run } : { name: 'home' }
     case 'licao':
@@ -46,6 +53,10 @@ export function parseHash(hash: string): Route {
 
 export function routeHash(r: Route): string {
   switch (r.name) {
+    case 'studies':
+      return '#/estudos'
+    case 'study':
+      return `#/estudo/${r.id}${r.run ? `?run=${r.run}` : ''}`
     case 'home':
       return '#/'
     case 'play':
