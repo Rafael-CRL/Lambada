@@ -1,16 +1,15 @@
 # Lambada
 
-Leitura de partitura e prática de violão clássico, com retorno em tempo real pelo microfone.
-
-Você lê a nota na pauta, toca no violão e o app ouve e responde na hora: no braço, na pauta e no tempo.
+Exercícios de leitura de partitura e de localização das notas no braço do violão clássico, com retorno pelo microfone.
 
 **Demo:** https://rafael-crl.github.io/Lambada/
 
 ## O que tem
 
+- **Violão:** trilha Primeira posição, corda por corda, e as atividades Notas (ler a nota na pauta e tocar), Escala (as naturais na primeira posição) e Explorar (tocar ou clicar no braço e ver a nota). O microfone confere a nota, na oitava certa, e o tempo.
+- **Praticar:** Leitura (ler a nota e responder) e Ritmo (ler e bater), em tempo livre ou com metrônomo.
 - **Teoria musical:** trilha guiada do zero (notas na pauta, figuras, compasso, pausas, acidentes) com cartões, guias e desafios.
-- **Praticar:** leitura de notas e ritmo com metrônomo.
-- **Violão:** primeira posição, corda por corda. O microfone confere a nota (na oitava certa) e o tempo.
+- **Progresso:** acerto por nota, na pauta e no braço, e histórico das sessões.
 - **Estudo guiado:** exercícios das páginas 26–34 de *Iniciação ao violão*, de Henrique Pinto, até Andante e Poco Andante (2/4 e 3/4). Escolha direta, partituras fixas, BPM, escuta e voltas. Exercícios de uma voz têm correção pelo microfone; arpejos e peças têm prática com metrônomo.
 
 O microfone avalia altura e tempo. Dedilhado, corda e qualidade do som, não, e o app não finge que avalia.
@@ -36,7 +35,7 @@ Testes: `docker compose exec app npx vitest run`.
 
 ## Mais
 
-- [VISAO.md](VISAO.md): para onde o produto vai e por quê.
+- [VISAO.md](VISAO.md): para onde o app pretende seguir.
 - [NOTAS-DO-PROJETO.md](NOTAS-DO-PROJETO.md): decisões e armadilhas do código.
 
 [pitchy]: https://github.com/ianprime0509/pitchy
