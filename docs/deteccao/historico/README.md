@@ -8,8 +8,9 @@ Os totais excluem `revisar/`. Acerto = 100 × (1 − distância de edição / no
 |---|---|---|---|---|---|---|---|---|---|
 | [1](./0001.json) | 2026-09-30T04:35:04.323Z | não registrada | 30 | 434 / 2808 | 84.54% | 333 / 2808 | 88.14% | 67 / 5616 | Relatório preservado antes do início do histórico; versão e arquivos não registrados |
 | [2](./0002.json) | 2026-10-05T01:38:05.003Z | 8412ddf | 30 | 434 / 2808 | 84.54% | 333 / 2808 | 88.14% | 67 / 5616 | Início do histórico contínuo: detector atual e conjunto completo de gravações |
+| [3](./0003.json) | 2026-10-05T01:40:13.802Z | d537b45 | 30 | 434 / 2808 | 84.54% | 333 / 2808 | 88.14% | 67 / 5616 | Confirmação de repetibilidade: mesmo detector, áudio e gabaritos da rodada 2 |
 
-## Primeira × última: rodadas 1 e 2
+## Primeira × última: rodadas 1 e 3
 
 Comparação sobre 30 gravações comuns, com o mesmo gabarito e as mesmas leituras.
 
@@ -19,6 +20,25 @@ Comparação sobre 30 gravações comuns, com o mesmo gabarito e as mesmas leitu
 |---|---|---|---|
 | sozinho | 434 → 434 | 84.54% → 84.54% | 0.00 |
 | exercicio | 333 → 333 | 88.14% → 88.14% | 0.00 |
+
+| Modo | Perdidas: primeira → última | Trocadas: primeira → última | Extras: primeira → última |
+|---|---|---|---|
+| sozinho | 420 → 420 | 9 → 9 | 5 → 5 |
+| exercicio | 319 → 319 | 9 → 9 | 5 → 5 |
+
+## Primeira com hashes × última: rodadas 2 e 3
+
+Comparação sobre 30 gravações comuns, com o mesmo gabarito e as mesmas leituras.
+
+| Modo | Erros: primeira → última | Acerto: primeira → última | Variação (pontos percentuais) |
+|---|---|---|---|
+| sozinho | 434 → 434 | 84.54% → 84.54% | 0.00 |
+| exercicio | 333 → 333 | 88.14% → 88.14% | 0.00 |
+
+| Modo | Perdidas: primeira → última | Trocadas: primeira → última | Extras: primeira → última |
+|---|---|---|---|
+| sozinho | 420 → 420 | 9 → 9 | 5 → 5 |
+| exercicio | 319 → 319 | 9 → 9 | 5 → 5 |
 
 Os totais de rodadas com conjuntos diferentes não devem ser comparados diretamente. Risco é uma medida comparativa com notas esperadas deslocadas de propósito, não uma taxa absoluta de falsos positivos.
 
