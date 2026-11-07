@@ -55,6 +55,7 @@ export function StudyScreen({ id }: { id: string }) {
     setView(EMPTY_VIEW)
     setError('')
     setPhase('opening')
+    window.scrollTo(0, 0)
     let opened: Microphone | null = null
     let session: StudySession | null = null
     let saved = false
@@ -134,7 +135,7 @@ export function StudyScreen({ id }: { id: string }) {
   })
 
   const active = phase === 'running' || phase === 'paused'
-  return <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-5 px-4 pb-10 sm:px-6">
+  return <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-3 px-4 pb-6 sm:px-6">
     <header className="sticky top-0 z-10 -mx-4 flex flex-col gap-3 border-b border-line/50 bg-bg/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
@@ -153,7 +154,7 @@ export function StudyScreen({ id }: { id: string }) {
       </div>
       <ProgressBar value={view.progress} />
     </header>
-    <div className="flex flex-col gap-3">
+    {!active && <div className="flex flex-col gap-3">
       <p className="max-w-3xl text-sm leading-relaxed text-sub">{study.hint}</p>
       {study.form && <p className="text-xs text-sub">{study.form}</p>}
       {options && <div className="flex flex-wrap items-center gap-3">
@@ -166,7 +167,7 @@ export function StudyScreen({ id }: { id: string }) {
         <button type="button" aria-pressed={guide} onClick={() => setGuide(!guide)} className="rounded-lg px-3 py-2 text-xs text-sub hover:bg-surface hover:text-text">{guide ? 'ocultar ajuda' : 'notas e posições'}</button>
       </div>}
       <p className="text-xs leading-relaxed text-sub">{study.polyphonic ? 'Baixo e melodia soam juntos. Pratique com a pauta e o metrônomo; este trecho não recebe nota pelo microfone.' : options?.mode === 'mic' ? options.tempo === 'free' ? 'A pauta espera a nota certa, na oitava certa. O ritmo fica livre.' : 'Toque no pulso. O microfone confere a nota e o ataque; corda e dedos são indicações.' : options?.mode === 'listen' ? 'Ouça o exercício completo, incluindo as repetições.' : 'Toque acompanhando o cursor. A prática é registrada sem avaliação de acerto.'}</p>
-    </div>
+    </div>}
     {error && <div role="alert" className="rounded-xl bg-surface p-4 text-sm">
       <p>{phase === 'error' && options?.mode === 'mic' ? 'Não foi possível abrir o microfone. Você pode tentar de novo ou praticar só com o metrônomo.' : 'Não foi possível concluir a operação.'}</p>
       <p className="mt-2 break-words text-xs text-sub">{error}</p>
@@ -179,7 +180,7 @@ export function StudyScreen({ id }: { id: string }) {
     </section>}
     {mic && <MicMeter mic={mic} />}
     {options?.mode === 'mic' && active && <><FeedbackLine fb={view.feedback} />{view.fret && <FretHint fret={view.fret} />}</>}
-    <GuidedScore study={study} view={view} guide={guide} running={active} />
-    <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-sub"><span>Iniciação ao violão · livro p. {study.page} / PDF p. {study.page - 2}</span><Button variant="ghost" onClick={leave}>todos os estudos</Button></footer>
+    <GuidedScore study={study} view={view} guide={guide} running={active} reserve={active ? 170 : 220} />
+    {!active && <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-sub"><span>Iniciação ao violão · livro p. {study.page} / PDF p. {study.page - 2}</span><Button variant="ghost" onClick={leave}>todos os estudos</Button></footer>}
   </div>
 }
